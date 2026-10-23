@@ -1,7 +1,9 @@
-const express = require('express');
-const app = express();
+module.exports = async (req, res) => {
+    // Gestisce solo le richieste verso /lista.m3u
+    if (!req.url.startsWith('/lista.m3u')) {
+        return res.status(404).send("Pagina non trovata. Usa /lista.m3u");
+    }
 
-app.get('/lista.m3u', async (req, res) => {
     const passwordRichiesta = process.env.PASSWORD_ACCESSO || "Miapassword123!";
     const passwordFornita = req.query.pw;
 
@@ -14,14 +16,13 @@ app.get('/lista.m3u', async (req, res) => {
     
     let outputM3U = "#EXTM3U\n";
 
-    // Configuriamo i parametri di download per evitare blocchi o crash se il server IPTV è lento
     const fetchOptions = {
         method: 'GET',
         headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
-        signal: AbortSignal.timeout(10000) // Timeout di 10 secondi massimo per ogni lista
+        signal: AbortSignal.timeout(12000)
     };
 
-    // 1. Elaborazione Liste M3U
+    // 1. Liste M3U
     const m3uEnv = process.env.LISTE_M3U;
     if (m3uEnv) {
         const urlListe = m3uEnv.split(',').map(url => url.trim());
@@ -35,13 +36,13 @@ app.get('/lista.m3u', async (req, res) => {
                         if (testoPulito) outputM3U += testoPulito + "\n";
                     }
                 } catch (e) {
-                    console.error("Errore nel caricamento della M3U:", url, e.message);
+                    console.error("Errore M3U:", e.message);
                 }
             }
         }
     }
 
-    // 2. Elaborazione Credenziali Xtream Codes
+    // 2. Xtream Codes
     const xtreamEnv = process.env.LISTE_XTREAM;
     if (xtreamEnv) {
         const accountXtream = xtreamEnv.split(',').map(acc => acc.trim());
@@ -62,17 +63,12 @@ app.get('/lista.m3u', async (req, res) => {
                             if (testoPulito) outputM3U += testoPulito + "\n";
                         }
                     } catch (e) {
-                        console.error("Errore nel caricamento di Xtream:", urlBase, e.message);
+                        console.error("Errore Xtream:", e.message);
                     }
                 }
             }
         }
     }
 
-    res.send(outputM3U);
-});
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Proxy attivo sulla porta ${PORT}`));
-
-module.exports = app;
+    return res.send(outputM3U);
+};

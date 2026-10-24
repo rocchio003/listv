@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 const UA = 'Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG200 stbapp ver: 2 rev: 250 Safari/533.3';
 
 export const b64e = (u8) => btoa(String.fromCharCode(...u8)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -33,8 +35,9 @@ export function parseM3U(txt) {
 
 // ---- Stalker ----
 // GET che ritorna JSON; se la risposta è vuota/non JSON, l'errore dice cosa è arrivato
-async function jget(url, headers, what) {
+async function jget(url, headers, what, meta) {
   const r = await get(url, headers);
+  if (meta) meta.cookies = (r.headers.getSetCookie ? r.headers.getSetCookie() : []).map((c) => c.split(';')[0]);
   const t = await r.text();
   try {
     return JSON.parse(t);
@@ -53,24 +56,41 @@ const candidates = (u) => {
   return c;
 };
 
-export const sh = (mac, tok, ref) => ({
+export const sh = (mac, tok, ref, extra = []) => ({
   'User-Agent': UA,
   'X-User-Agent': 'Model: MAG250; Link: WiFi',
   Accept: '*/*',
-  Cookie: `mac=${mac}; stb_lang=it; timezone=Europe%2FRome`,
+  Cookie: [`mac=${mac}`, 'stb_lang=it', 'timezone=Europe%2FRome', ...extra].join('; '),
   ...(ref && { Referer: ref }),
   ...(tok && { Authorization: 'Bearer ' + tok }),
 });
 
+const hash = (alg, v) => createHash(alg).update(v).digest('hex');
+
+// Handshake + profilo da MAG250 (molti portali non consegnano i canali senza profilo)
 export async function stalkerLogin(url, mac) {
   const errs = [];
+  const sn = hash('md5', mac).toUpperCase().slice(0, 13);
+  const did = hash('sha256', mac).toUpperCase();
   for (const api of candidates(url)) {
     try {
-      const h = await jget(`${api}?type=stb&action=handshake&token=&prehash=0&JsHttpRequest=1-xml`, sh(mac, null, url), 'handshake');
+      const meta = {};
+      const h = await jget(`${api}?type=stb&action=handshake&token=&prehash=0&JsHttpRequest=1-xml`, sh(mac, null, url), 'handshake', meta);
       const tok = h.js && h.js.token;
       if (!tok) throw new Error('handshake senza token');
-      await get(`${api}?type=stb&action=get_profile&JsHttpRequest=1-xml`, sh(mac, tok, url)).catch(() => {});
-      return { api, tok };
+      const H = sh(mac, tok, url, meta.cookies || []);
+      const prof = new URLSearchParams({
+        type: 'stb', action: 'get_profile', hd: '1',
+        ver: 'ImageDescription: 0.2.18-r23-250; ImageDate: Wed Aug 29 10:49:53 EEST 2018; PORTAL version: 5.5.0; API Version: JS API version: 343; STB API version: 146; Player Engine version: 0x58c',
+        num_banks: '2', sn, stb_type: 'MAG250', image_version: '218', video_out: 'hdmi',
+        device_id: did, device_id2: did, signature: '', auth_second_step: '1', hw_version: '1.7-BD-00',
+        not_valid_token: '0', client_type: 'STB', hw_version_2: hash('sha1', mac),
+        timestamp: String(Math.floor(Date.now() / 1000)), api_signature: '262',
+        metrics: JSON.stringify({ mac, sn, type: 'STB', model: 'MAG250', uid: '', random: (h.js && h.js.random) || '' }),
+        JsHttpRequest: '1-xml',
+      });
+      await get(`${api}?${prof}`, H).catch(() => {});
+      return { api, tok, H };
     } catch (e) {
       errs.push(`${api.replace(/^https?:\/\/[^/]+/, '')} → ${e.message}`);
     }
@@ -91,7 +111,9 @@ async function stalkerChannels(api, H) {
     for (let p = 1; p <= 300; p++) {
       const oj = await jget(
         `${api}?type=itv&action=get_ordered_list&genre=*&force_ch_link_check=&fav=0&sortby=number&hd=0&p=${p}&JsHttpRequest=1-xml`,
-        H, 'lista canali');
+        H, 'lista canali').catch((e) => {
+        throw new Error(e.message + '. Il portale non consegna i canali: MAC non attivo/scaduto oppure blocca l’IP di Vercel');
+      });
       const d = (oj.js && oj.js.data) || [];
       if (!d.length) break;
       data.push(...d);
@@ -106,8 +128,7 @@ async function stalkerChannels(api, H) {
 // Sorgente {t,n,u,a,p,m,x,e} -> [{group, inf, extra, url}]
 export async function collect(s, origin) {
   if (s.t === 'stalker') {
-    const { api, tok } = await stalkerLogin(s.u, s.m);
-    const H = sh(s.m, tok, s.u);
+    const { api, H } = await stalkerLogin(s.u, s.m);
     const gj = await jget(`${api}?type=itv&action=get_genres&JsHttpRequest=1-xml`, H, 'generi').catch(() => ({}));
     const gm = {};
     (Array.isArray(gj.js) ? gj.js : []).forEach((g) => (gm[g.id] = g.title));

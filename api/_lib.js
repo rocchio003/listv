@@ -207,3 +207,35 @@ export async function getCfg(q) {
   }
   return decode(q.get('c'));
 }
+
+// ---- Modifica canali (override per canale, chiave = hash dell'URL dello stream) ----
+export const uh = (url) => createHash('sha1').update(url).digest('hex').slice(0, 12);
+
+// Divide #EXTINF in intestazione e nome (prima virgola fuori dalle virgolette)
+function splitInf(inf) {
+  let q = false;
+  for (let i = 0; i < inf.length; i++) {
+    if (inf[i] === '"') q = !q;
+    else if (inf[i] === ',' && !q) return [inf.slice(0, i), inf.slice(i + 1)];
+  }
+  return [inf, ''];
+}
+const attr = (h, k) => (h.match(new RegExp(`(?:^|\\s)${k}="([^"]*)"`)) || [])[1] || '';
+export function infParts(inf) {
+  const [h, name] = splitInf(inf);
+  return { name: name.trim(), id: attr(h, 'tvg-id'), logo: attr(h, 'tvg-logo') };
+}
+const setAttr = (h, k, v) => {
+  const re = new RegExp(`(\\s)${k}="[^"]*"`);
+  const kv = `${k}="${String(v).replace(/"/g, "'")}"`;
+  return re.test(h) ? h.replace(re, (m, sp) => sp + kv) : h.replace(/^(#EXTINF:\S+)/, (m, d) => `${d} ${kv}`);
+};
+// o = {n: nome, i: tvg-id, g: gruppo, l: logo}: solo i campi presenti vengono sostituiti
+export function applyOv(inf, o) {
+  if (!o) return inf;
+  let [h, name] = splitInf(inf);
+  if (o.i !== undefined) h = setAttr(h, 'tvg-id', o.i);
+  if (o.l !== undefined) h = setAttr(h, 'tvg-logo', o.l);
+  if (o.g !== undefined) h = setAttr(h, 'group-title', o.g);
+  return h + ',' + (o.n !== undefined ? o.n : name);
+}

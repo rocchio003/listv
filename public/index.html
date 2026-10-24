@@ -140,14 +140,16 @@ async function boot() {
 function render() {
   $('list').innerHTML = D.s.map((s, i) => `
     <div class="card">
-      <b>${esc(s.n)}</b> <small>${s.t}${(s.x || []).length ? ' · ' + s.x.length + ' gruppi esclusi' : ''}</small>
+      <b>${esc(s.n)}</b> <small>${s.t}${(s.x || []).length ? ' · ' + s.x.length + ' gruppi esclusi' : ''}${Object.keys(s.o || {}).length ? ' · ' + Object.keys(s.o).length + ' canali modificati' : ''}</small>
       <div class="row">
         <label><input type="checkbox" ${s.e !== 0 ? 'checked' : ''} onchange="D.s[${i}].e=this.checked?1:0;upd()">attiva</label>
         <label><input type="checkbox" ${s.pf ? 'checked' : ''} onchange="D.s[${i}].pf=this.checked?1:0;upd()">nome lista nei gruppi</label>
+        <button class="s" onclick="edit(${i})">Modifica</button>
         <button class="s" onclick="groups(${i})">Gruppi</button>
+        <button class="s" onclick="chans(${i})">Canali</button>
         <button class="s" onclick="del(${i})">Elimina</button>
       </div>
-      <div id="g${i}"></div>
+      <div id="e${i}"></div><div id="g${i}"></div><div id="c${i}"></div>
     </div>`).join('') || '<small>Nessuna lista ancora.</small>';
   $('eg').innerHTML = (D.g || []).map((g, i) => `<div class="row"><small style="flex:1;word-break:break-all">${esc(g)}</small><button class="s" onclick="D.g.splice(${i},1);render()">✕</button></div>`).join('');
   upd();
@@ -156,7 +158,7 @@ function render() {
 async function groups(i) {
   const s = D.s[i], el = $('g' + i);
   el.textContent = 'Carico i gruppi…';
-  const r = await fetch(`/api/playlist?groups=${i}&c=${await enc({ s: D.s, g: D.g || [] })}`);
+  const r = await fetch(`/api/playlist?groups=0&c=${await enc({ s: [strip(s)], g: [] })}`);
   if (!r.ok) { el.textContent = 'Errore: ' + (await r.text()); return; }
   const g = await r.json();
   s.x = s.x || [];
@@ -175,6 +177,62 @@ function flt(e) {
   const q = e.value.toLowerCase();
   e.nextSibling.querySelectorAll('label').forEach((l) => (l.hidden = !l.textContent.toLowerCase().includes(q)));
 }
+const strip = (s) => { const { o, ...r } = s; return r; };
+const CH = {};
+
+// Modifica nome, indirizzo e credenziali della lista
+function edit(i) {
+  const s = D.s[i], el = $('e' + i);
+  if (el.innerHTML) { el.innerHTML = ''; return; }
+  const f = (id, v, ph) => `<input id="${id}${i}" value="${esc(v || '')}" placeholder="${ph}">`;
+  el.innerHTML = f('en', s.n, 'Nome lista') + f('eu', s.u, 'URL / server / portale') +
+    (s.t === 'xtream' ? f('ea', s.a, 'Username') + f('ep', s.p, 'Password') : '') +
+    (s.t === 'stalker' ? f('em', s.m, 'MAC') : '') +
+    `<button onclick="applyEdit(${i})">Applica</button>`;
+}
+function applyEdit(i) {
+  const s = D.s[i], g = (id) => $(id + i).value.trim();
+  s.n = g('en') || s.n;
+  s.u = g('eu') || s.u;
+  if (s.t === 'xtream') { s.a = g('ea'); s.p = g('ep'); }
+  if (s.t === 'stalker') s.m = g('em').toUpperCase();
+  render();
+}
+
+// Modifica dei singoli canali (nome, tvg-id, gruppo, logo): richiede la sincronizzazione
+function chans(i) {
+  const el = $('c' + i);
+  if (el.innerHTML) { el.innerHTML = ''; return; }
+  if (!cloud) { el.textContent = 'La modifica dei canali richiede la sincronizzazione ☁️ (database collegato e accesso con la password).'; return; }
+  el.innerHTML = `<div class="row"><input id="cq${i}" placeholder="Cerca nome, id o gruppo" style="flex:1" onkeydown="if(event.key==='Enter')cgo(${i})"><label><input type="checkbox" id="cb${i}">senza tvg-id</label><button onclick="cgo(${i})">Cerca</button></div><div id="cr${i}"><small>Cerca un canale oppure spunta “senza tvg-id”.</small></div>`;
+}
+async function cgo(i) {
+  const s = D.s[i], out = $('cr' + i);
+  out.textContent = 'Carico…';
+  const t = await enc({ s: [strip(s)], g: [] });
+  const r = await fetch(`/api/playlist?channels=0&q=${encodeURIComponent($('cq' + i).value)}&bad=${$('cb' + i).checked ? 1 : 0}&c=${t}`);
+  if (!r.ok) { out.textContent = 'Errore: ' + (await r.text()); return; }
+  const { total, items } = await r.json();
+  const ov = s.o || {};
+  out.innerHTML = `<small>${total} canali trovati${total > items.length ? ', mostro i primi ' + items.length + ': affina la ricerca' : ''}</small>` +
+    items.map((c) => {
+      CH[i + c.h] = c;
+      const o = ov[c.h] || {}, v = (f) => esc(o[f] !== undefined ? o[f] : c[f]);
+      return `<div class="card" style="padding:8px" id="r${i}${c.h}"><small>${esc(c.n)}${ov[c.h] ? ' ✎' : ''}</small>
+        <input data-f="n" value="${v('n')}" placeholder="Nome"><input data-f="i" value="${v('i')}" placeholder="tvg-id"><input data-f="g" value="${v('g')}" placeholder="Gruppo"><input data-f="l" value="${v('l')}" placeholder="Logo (URL)">
+        <button onclick="sch(${i},'${c.h}')">Salva</button><button class="s" onclick="rch(${i},'${c.h}')">Ripristina</button></div>`;
+    }).join('');
+}
+function sch(i, h) {
+  const s = D.s[i], o = CH[i + h], card = $('r' + i + h), ov = {};
+  card.querySelectorAll('input').forEach((e) => { if (e.value !== o[e.dataset.f]) ov[e.dataset.f] = e.value; });
+  s.o = s.o || {};
+  if (Object.keys(ov).length) s.o[h] = ov; else delete s.o[h];
+  upd();
+  card.querySelector('small').textContent = o.n + (s.o[h] ? ' ✎ salvato' : '');
+}
+function rch(i, h) { delete (D.s[i].o || {})[h]; upd(); cgo(i); }
+
 function del(i) {
   if (confirm('Eliminare questa lista?')) { D.s.splice(i, 1); render(); }
 }

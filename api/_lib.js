@@ -153,3 +153,57 @@ export async function collect(s, origin) {
   if (!r.ok) throw new Error('HTTP ' + r.status);
   return parseM3U(await r.text());
 }
+
+// ---- EPG ----
+export const getLong = (url) =>
+  fetch(url, { headers: { 'User-Agent': 'VLC/3.0.20' }, signal: AbortSignal.timeout(55000) });
+
+// Link EPG da unire: quelli inseriti a mano + xmltv.php delle liste Xtream + url-tvg nell'intestazione delle liste M3U
+export async function epgUrls(cfg) {
+  const out = [...(cfg.g || [])];
+  const act = (cfg.s || []).filter((s) => s.e !== 0);
+  await Promise.all(
+    act.map(async (s) => {
+      try {
+        if (s.t === 'xtream') {
+          out.push(`${s.u.trim().replace(/\/+$/, '')}/xmltv.php?username=${encodeURIComponent(s.a)}&password=${encodeURIComponent(s.p)}`);
+        } else if (s.t === 'm3u') {
+          const r = await get(s.u.trim());
+          const rd = r.body.getReader();
+          const { value } = await rd.read();
+          rd.cancel().catch(() => {});
+          const head = new TextDecoder().decode(value || new Uint8Array()).split(/\r?\n/)[0];
+          const m = head.match(/(?:url-tvg|x-tvg-url)="([^"]*)"/);
+          if (m) out.push(...m[1].split(',').map((x) => x.trim()).filter(Boolean));
+        }
+      } catch {}
+    })
+  );
+  return [...new Set(out)];
+}
+
+// ---- Archivio condiviso (Upstash Redis collegato da Vercel) ----
+const DB_URL = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
+const DB_TOK = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
+const DB_KEY = 'iptvhub:cfg';
+const dbAuth = () => {
+  if (!DB_URL || !DB_TOK) throw new Error('Database Redis non collegato al progetto Vercel');
+  return { Authorization: 'Bearer ' + DB_TOK };
+};
+export async function loadCfg() {
+  const j = await (await fetch(`${DB_URL}/get/${DB_KEY}`, { headers: dbAuth() })).json();
+  return j.result ? JSON.parse(j.result) : { s: [], g: [] };
+}
+export async function saveCfg(cfg) {
+  const r = await fetch(DB_URL, { method: 'POST', headers: dbAuth(), body: JSON.stringify(['SET', DB_KEY, JSON.stringify(cfg)]) });
+  if (!r.ok) throw new Error('Salvataggio fallito');
+}
+// Configurazione da ?k=chiave (archivio) oppure da ?c=token (vecchi link, tutto dentro il link)
+export async function getCfg(q) {
+  if (q.has('k')) {
+    const cfg = await loadCfg();
+    if (!cfg.k || cfg.k !== q.get('k')) throw new Error('Chiave non valida');
+    return cfg;
+  }
+  return decode(q.get('c'));
+}

@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>IPTV Hub</title>
+<style>
+:root{color-scheme:dark light;--b:#14161a;--c:#1e2127;--t:#e8eaed;--a:#4f8cff;--m:#8a919c}
+@media(prefers-color-scheme:light){:root{--b:#f4f5f7;--c:#fff;--t:#1a1c20;--m:#6b7280}}
+*{box-sizing:border-box}
+body{margin:0 auto;max-width:720px;padding:14px;font:15px system-ui,sans-serif;background:var(--b);color:var(--t)}
+h1{font-size:20px;margin:6px 0 12px}h2{font-size:16px;margin:20px 0 8px}
+.card{background:var(--c);border-radius:12px;padding:12px;margin:10px 0}
+input,select,button{font:inherit;color:inherit;background:transparent;border:1px solid #8884;border-radius:8px;padding:9px 10px;margin:3px 0;width:100%}
+button{width:auto;cursor:pointer;background:var(--a);border:0;color:#fff;margin-right:6px}
+button.s{background:#8883;color:var(--t)}
+.row{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:6px}
+.row label{display:flex;align-items:center;gap:6px;margin-right:8px}.row input{width:auto}
+small{color:var(--m)}
+.grp{max-height:260px;overflow:auto;margin-top:6px}
+.grp label{display:flex;gap:8px;align-items:center;padding:5px 0}.grp input{width:auto;margin:0}
+</style>
+</head>
+<body>
+<h1>📺 IPTV Hub</h1>
+
+<div class="card">
+  <small>Link unico per il player (contiene tutta la configurazione)</small>
+  <input id="link" readonly onclick="this.select()">
+  <small id="len"></small>
+  <div class="row">
+    <button onclick="navigator.clipboard.writeText($('link').value);this.textContent='Copiato ✓'">Copia link</button>
+    <button class="s" onclick="$('link').value&&window.open($('link').value)">Apri / testa</button>
+  </div>
+</div>
+
+<h2>Liste</h2>
+<div id="list"></div>
+
+<h2>Aggiungi lista</h2>
+<div class="card">
+  <select id="t" onchange="ty()">
+    <option value="m3u">M3U (URL)</option>
+    <option value="xtream">Xtream Codes</option>
+    <option value="stalker">Stalker / MAC</option>
+  </select>
+  <input id="n" placeholder="Nome">
+  <input id="u" placeholder="URL lista M3U">
+  <input id="us" placeholder="Username" hidden>
+  <input id="pw" placeholder="Password" hidden>
+  <input id="m" placeholder="MAC (00:1A:79:...)" hidden>
+  <button onclick="add()">+ Aggiungi</button>
+</div>
+
+<h2>Modifica un link esistente</h2>
+<div class="card">
+  <input id="imp" placeholder="Incolla qui un link già generato">
+  <button class="s" onclick="imp()">Carica configurazione</button>
+</div>
+
+<script>
+const $ = (i) => document.getElementById(i);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const b64e = (u) => btoa(String.fromCharCode(...u)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const b64d = (s) => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0));
+const enc = async (o) =>
+  b64e(new Uint8Array(await new Response(new Blob([JSON.stringify(o)]).stream().pipeThrough(new CompressionStream('deflate-raw'))).arrayBuffer()));
+const dec = async (t) =>
+  JSON.parse(await new Response(new Blob([b64d(t)]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text());
+
+let D = { s: [] };
+try { D = JSON.parse(localStorage.cfg) || D; } catch {}
+
+async function upd() {
+  try { localStorage.cfg = JSON.stringify(D); } catch {}
+  const l = D.s.length ? location.origin + '/playlist.m3u?c=' + (await enc(D)) : '';
+  $('link').value = l;
+  $('len').textContent = l ? l.length + ' caratteri' + (l.length > 2000 ? ' ⚠️ link lungo: alcuni player potrebbero rifiutarlo, escludi meno gruppi o usa meno liste' : '') : '';
+}
+
+function render() {
+  $('list').innerHTML = D.s.map((s, i) => `
+    <div class="card">
+      <b>${esc(s.n)}</b> <small>${s.t}${(s.x || []).length ? ' · ' + s.x.length + ' gruppi esclusi' : ''}</small>
+      <div class="row">
+        <label><input type="checkbox" ${s.e !== 0 ? 'checked' : ''} onchange="D.s[${i}].e=this.checked?1:0;upd()">attiva</label>
+        <button class="s" onclick="groups(${i})">Gruppi</button>
+        <button class="s" onclick="del(${i})">Elimina</button>
+      </div>
+      <div id="g${i}"></div>
+    </div>`).join('') || '<small>Nessuna lista ancora.</small>';
+  upd();
+}
+
+async function groups(i) {
+  const s = D.s[i], el = $('g' + i);
+  el.textContent = 'Carico i gruppi…';
+  const r = await fetch(`/api/playlist?groups=${i}&c=${await enc(D)}`);
+  if (!r.ok) { el.textContent = 'Errore: ' + (await r.text()); return; }
+  const g = await r.json();
+  s.x = s.x || [];
+  el.innerHTML = '<input placeholder="Cerca gruppo" oninput="flt(this)"><div class="grp">' +
+    Object.entries(g).sort().map(([n, c]) =>
+      `<label><input type="checkbox" data-n="${esc(n)}" ${s.x.includes(n) ? '' : 'checked'} onchange="tg(${i},this)">${esc(n)} <small>(${c})</small></label>`
+    ).join('') + '</div><small>Spunta = incluso. Il link si aggiorna da solo.</small>';
+}
+function tg(i, e) {
+  const s = D.s[i], n = e.dataset.n;
+  s.x = (s.x || []).filter((v) => v !== n);
+  if (!e.checked) s.x.push(n);
+  upd();
+}
+function flt(e) {
+  const q = e.value.toLowerCase();
+  e.nextSibling.querySelectorAll('label').forEach((l) => (l.hidden = !l.textContent.toLowerCase().includes(q)));
+}
+function del(i) {
+  if (confirm('Eliminare questa lista?')) { D.s.splice(i, 1); render(); }
+}
+function ty() {
+  const t = $('t').value;
+  $('us').hidden = $('pw').hidden = t !== 'xtream';
+  $('m').hidden = t !== 'stalker';
+  $('u').placeholder = t === 'm3u' ? 'URL lista M3U' : t === 'xtream' ? 'Server (http://host:porta)' : 'Portale (http://host/c/)';
+}
+function add() {
+  const t = $('t').value;
+  const s = { t, n: $('n').value || t, u: $('u').value.trim(), x: [], e: 1 };
+  if (!s.u) return alert('Inserisci l’URL');
+  if (t === 'xtream') { s.a = $('us').value.trim(); s.p = $('pw').value.trim(); }
+  if (t === 'stalker') s.m = $('m').value.trim().toUpperCase();
+  D.s.push(s);
+  ['n', 'u', 'us', 'pw', 'm'].forEach((x) => ($(x).value = ''));
+  render();
+}
+async function imp() {
+  try {
+    D = await dec(new URL($('imp').value.trim()).searchParams.get('c'));
+    $('imp').value = '';
+    render();
+  } catch { alert('Link non valido'); }
+}
+ty();
+render();
+</script>
+</body>
+</html>

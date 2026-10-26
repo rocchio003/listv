@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>IPTV Hub</title>
+<<<<<<< HEAD
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+=======
+>>>>>>> f25d892d773ca18792375910bfddbd991e0c0b10
+<style>
+:root{color-scheme:dark light;--b:#14161a;--c:#1e2127;--t:#e8eaed;--a:#4f8cff;--m:#8a919c}
+@media(prefers-color-scheme:light){:root{--b:#f4f5f7;--c:#fff;--t:#1a1c20;--m:#6b7280}}
+*{box-sizing:border-box}
+body{margin:0 auto;max-width:720px;padding:14px;font:15px system-ui,sans-serif;background:var(--b);color:var(--t)}
+h1{font-size:20px;margin:6px 0 12px}h2{font-size:16px;margin:20px 0 8px}
+.card{background:var(--c);border-radius:12px;padding:12px;margin:10px 0}
+input,select,button{font:inherit;color:inherit;background:transparent;border:1px solid #8884;border-radius:8px;padding:9px 10px;margin:3px 0;width:100%}
+button{width:auto;cursor:pointer;background:var(--a);border:0;color:#fff;margin-right:6px}
+button.s{background:#8883;color:var(--t)}
+.row{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:6px}
+.row label{display:flex;align-items:center;gap:6px;margin-right:8px}.row input{width:auto}
+small{color:var(--m)}
+.grp{max-height:260px;overflow:auto;margin-top:6px}
+.grp label{display:flex;gap:8px;align-items:center;padding:5px 0}.grp input{width:auto;margin:0}
+</style>
+</head>
+<body>
+<h1>📺 IPTV Hub</h1>
+<small id="st"></small> <a href="#" style="font-size:12px" onclick="localStorage.removeItem('p');location.reload();return false">cambia password</a>
+
+<div class="card">
+  <small>Link unico per il player (contiene tutta la configurazione)</small>
+  <input id="link" readonly onclick="this.select()">
+  <small id="len"></small>
+  <div class="row">
+    <button onclick="navigator.clipboard.writeText($('link').value);this.textContent='Copiato ✓'">Copia link</button>
+    <button class="s" onclick="$('link').value&&window.open($('link').value)">Apri / testa</button>
+  </div>
+</div>
+
+<div class="card">
+  <small>Link EPG unito (guida TV): è già indicato nella playlist, ma puoi incollarlo anche nelle impostazioni EPG del player</small>
+  <input id="epg" readonly onclick="this.select()">
+  <div class="row"><button onclick="navigator.clipboard.writeText($('epg').value);this.textContent='Copiato ✓'">Copia link EPG</button></div>
+</div>
+
+<h2>Liste</h2>
+<div id="list"></div>
+
+<h2>Aggiungi lista</h2>
+<div class="card">
+  <select id="t" onchange="ty()">
+    <option value="m3u">M3U (URL)</option>
+    <option value="xtream">Xtream Codes</option>
+    <option value="stalker">Stalker / MAC</option>
+  </select>
+  <input id="n" placeholder="Nome">
+  <input id="u" placeholder="URL lista M3U">
+  <input id="us" placeholder="Username" hidden>
+  <input id="pw" placeholder="Password" hidden>
+  <input id="m" placeholder="MAC (00:1A:79:...)" hidden>
+  <button onclick="add()">+ Aggiungi</button>
+</div>
+
+<h2>Sorgenti EPG</h2>
+<div class="card">
+  <small>Aggiungi link XMLTV (anche .xml.gz): vengono uniti in un solo EPG, insieme a quelli delle tue liste Xtream e M3U.</small>
+  <div id="eg"></div>
+  <input id="ei" placeholder="https://.../epg.xml.gz">
+  <button onclick="addEpg()">+ Aggiungi EPG</button>
+</div>
+
+<h2>Importa da un link vecchio</h2>
+<div class="card">
+  <input id="imp" placeholder="Incolla qui un link già generato">
+  <button class="s" onclick="imp()">Carica configurazione</button>
+</div>
+
+<<<<<<< HEAD
+<h2>Player di test</h2>
+<div class="card">
+  <input id="turl" placeholder="Incolla URL stream (HLS / m3u8 / mp4)">
+  <div class="row"><button onclick="playTest()">Riproduci</button><button class="s" onclick="stopTest()">Ferma</button></div>
+  <div style="margin-top:10px"><video id="vtest" controls style="width:100%;max-height:360px;background:#000;border-radius:8px" hidden></video></div>
+</div>
+
+=======
+>>>>>>> f25d892d773ca18792375910bfddbd991e0c0b10
+<script>
+const $ = (i) => document.getElementById(i);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const b64e = (u) => btoa(String.fromCharCode(...u)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const b64d = (s) => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0));
+const enc = async (o) =>
+  b64e(new Uint8Array(await new Response(new Blob([JSON.stringify(o)]).stream().pipeThrough(new CompressionStream('deflate-raw'))).arrayBuffer()));
+const dec = async (t) =>
+  JSON.parse(await new Response(new Blob([b64d(t)]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text());
+
+let D = { s: [] };
+try { D = JSON.parse(localStorage.cfg) || D; } catch {}
+
+let P = localStorage.p || '', cloud = false, saveT;
+const api = (m, b) => fetch('/api/config', { method: m, headers: { 'x-admin': P, 'content-type': 'application/json' }, body: b && JSON.stringify(b) });
+const setSt = (t) => ($('st').textContent = t);
+
+async function upd() {
+  try { localStorage.cfg = JSON.stringify(D); } catch {}
+  const has = D.s.length || (D.g || []).length;
+  let par, note = '';
+  if (cloud && D.k) {
+    par = 'k=' + D.k;
+    note = '☁️ Il link resta sempre lo stesso: le modifiche arrivano al player senza cambiarlo.';
+    setSt('☁️ Salvataggio…');
+    clearTimeout(saveT);
+    saveT = setTimeout(async () => {
+      try {
+        const r = await api('PUT', { s: D.s, g: D.g || [] });
+        setSt(r.ok ? '☁️ Sincronizzato' : '⚠️ Salvataggio non riuscito');
+      } catch { setSt('⚠️ Salvataggio non riuscito'); }
+    }, 600);
+  } else {
+    par = 'c=' + (await enc(D));
+  }
+  const l = D.s.length ? location.origin + '/playlist.m3u?' + par : '';
+  $('link').value = l;
+  $('epg').value = has ? location.origin + '/epg.xml?' + par : '';
+  $('len').textContent = cloud ? note : l ? l.length + ' caratteri' + (l.length > 2000 ? ' ⚠️ link lungo: alcuni player potrebbero rifiutarlo, escludi meno gruppi o usa meno liste' : '') : '';
+}
+
+async function boot() {
+  const local = D;
+  if (!P) P = prompt('Password admin (la stessa di ADMIN_PASSWORD su Vercel). Annulla = solo su questo dispositivo') || '';
+  if (P) {
+    try {
+      const r = await api('GET');
+      if (r.ok) {
+        D = (await r.json()).cfg;
+        D.s = D.s || []; D.g = D.g || [];
+        cloud = true;
+        localStorage.p = P;
+        if (!D.s.length && (local.s || []).length && confirm('Importare le liste salvate su questo dispositivo?')) D = { ...local, k: D.k };
+        setSt('☁️ Sincronizzato');
+      } else {
+        if (r.status === 401) { localStorage.removeItem('p'); P = ''; }
+        setSt('⚠️ ' + (await r.text()) + ' — modalità locale');
+      }
+    } catch { setSt('⚠️ Server non raggiungibile — modalità locale'); }
+  }
+  if (!cloud && !$('st').textContent) setSt('💾 Solo su questo dispositivo');
+  render();
+}
+
+function render() {
+  $('list').innerHTML = D.s.map((s, i) => `
+    <div class="card">
+      <b>${esc(s.n)}</b> <small>${s.t}${(s.x || []).length ? ' · ' + s.x.length + ' gruppi esclusi' : ''}${Object.keys(s.o || {}).length ? ' · ' + Object.keys(s.o).length + ' canali modificati' : ''}</small>
+      <div class="row">
+        <label><input type="checkbox" ${s.e !== 0 ? 'checked' : ''} onchange="D.s[${i}].e=this.checked?1:0;upd()">attiva</label>
+        <label><input type="checkbox" ${s.pf ? 'checked' : ''} onchange="D.s[${i}].pf=this.checked?1:0;upd()">nome lista nei gruppi</label>
+<<<<<<< HEAD
+        <button class="s" onclick="move(${i}, -1)" ${i === 0 ? 'disabled style="opacity:0.4"' : ''}>⬆</button>
+        <button class="s" onclick="move(${i}, 1)" ${i === D.s.length - 1 ? 'disabled style="opacity:0.4"' : ''}>⬇</button>
+=======
+>>>>>>> f25d892d773ca18792375910bfddbd991e0c0b10
+        <button class="s" onclick="edit(${i})">Modifica</button>
+        <button class="s" onclick="groups(${i})">Gruppi</button>
+        <button class="s" onclick="chans(${i})">Canali</button>
+        <button class="s" onclick="del(${i})">Elimina</button>
+      </div>
+      <div id="e${i}"></div><div id="g${i}"></div><div id="c${i}"></div>
+    </div>`).join('') || '<small>Nessuna lista ancora.</small>';
+  $('eg').innerHTML = (D.g || []).map((g, i) => `<div class="row"><small style="flex:1;word-break:break-all">${esc(g)}</small><button class="s" onclick="D.g.splice(${i},1);render()">✕</button></div>`).join('');
+  upd();
+}
+
+<<<<<<< HEAD
+function move(i, dir) {
+  const target = i + dir;
+  if (target < 0 || target >= D.s.length) return;
+  const temp = D.s[i];
+  D.s[i] = D.s[target];
+  D.s[target] = temp;
+  render();
+}
+
+let hlsInstance = null;
+function playTest() {
+  const url = $('turl').value.trim();
+  const v = $('vtest');
+  v.hidden = false;
+  if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
+  if (url.includes('.m3u8') && Hls.isSupported()) {
+    hlsInstance = new Hls();
+    hlsInstance.loadSource(url);
+    hlsInstance.attachMedia(v);
+    hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => v.play());
+  } else {
+    v.src = url;
+    v.play().catch(() => alert('Errore riproduzione'));
+  }
+}
+function stopTest() {
+  const v = $('vtest');
+  v.pause();
+  v.src = '';
+  v.hidden = true;
+  if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
+}
+
+=======
+>>>>>>> f25d892d773ca18792375910bfddbd991e0c0b10
+async function groups(i) {
+  const s = D.s[i], el = $('g' + i);
+  el.textContent = 'Carico i gruppi…';
+  const r = await fetch(`/api/playlist?groups=0&c=${await enc({ s: [strip(s)], g: [] })}`);
+  if (!r.ok) { el.textContent = 'Errore: ' + (await r.text()); return; }
+  const g = await r.json();
+  s.x = s.x || [];
+  el.innerHTML = '<input placeholder="Cerca gruppo" oninput="flt(this)"><div class="grp">' +
+    Object.entries(g).sort().map(([n, c]) =>
+      `<label><input type="checkbox" data-n="${esc(n)}" ${s.x.includes(n) ? '' : 'checked'} onchange="tg(${i},this)">${esc(n)} <small>(${c})</small></label>`
+    ).join('') + '</div><small>Spunta = incluso. Il link si aggiorna da solo.</small>';
+}
+function tg(i, e) {
+  const s = D.s[i], n = e.dataset.n;
+  s.x = (s.x || []).filter((v) => v !== n);
+  if (!e.checked) s.x.push(n);
+  upd();
+}
+function flt(e) {
+  const q = e.value.toLowerCase();
+  e.nextSibling.querySelectorAll('label').forEach((l) => (l.hidden = !l.textContent.toLowerCase().includes(q)));
+}
+const strip = (s) => { const { o, ...r } = s; return r; };
+const CH = {};
+
+// Modifica nome, indirizzo e credenziali della lista
+function edit(i) {
+  const s = D.s[i], el = $('e' + i);
+  if (el.innerHTML) { el.innerHTML = ''; return; }
+  const f = (id, v, ph) => `<input id="${id}${i}" value="${esc(v || '')}" placeholder="${ph}">`;
+  el.innerHTML = f('en', s.n, 'Nome lista') + f('eu', s.u, 'URL / server / portale') +
+    (s.t === 'xtream' ? f('ea', s.a, 'Username') + f('ep', s.p, 'Password') : '') +
+    (s.t === 'stalker' ? f('em', s.m, 'MAC') : '') +
+    `<button onclick="applyEdit(${i})">Applica</button>`;
+}
+function applyEdit(i) {
+  const s = D.s[i], g = (id) => $(id + i).value.trim();
+  s.n = g('en') || s.n;
+  s.u = g('eu') || s.u;
+  if (s.t === 'xtream') { s.a = g('ea'); s.p = g('ep'); }
+  if (s.t === 'stalker') s.m = g('em').toUpperCase();
+  render();
+}
+
+// Modifica dei singoli canali (nome, tvg-id, gruppo, logo): richiede la sincronizzazione
+function chans(i) {
+  const el = $('c' + i);
+  if (el.innerHTML) { el.innerHTML = ''; return; }
+  if (!cloud) { el.textContent = 'La modifica dei canali richiede la sincronizzazione ☁️ (database collegato e accesso con la password).'; return; }
+  el.innerHTML = `<div class="row"><input id="cq${i}" placeholder="Cerca nome, id o gruppo" style="flex:1" onkeydown="if(event.key==='Enter')cgo(${i})"><label><input type="checkbox" id="cb${i}">senza tvg-id</label><button onclick="cgo(${i})">Cerca</button></div><div id="cr${i}"><small>Cerca un canale oppure spunta “senza tvg-id”.</small></div>`;
+}
+async function cgo(i) {
+  const s = D.s[i], out = $('cr' + i);
+  out.textContent = 'Carico…';
+  const t = await enc({ s: [strip(s)], g: [] });
+  const r = await fetch(`/api/playlist?channels=0&q=${encodeURIComponent($('cq' + i).value)}&bad=${$('cb' + i).checked ? 1 : 0}&c=${t}`);
+  if (!r.ok) { out.textContent = 'Errore: ' + (await r.text()); return; }
+  const { total, items } = await r.json();
+  const ov = s.o || {};
+  out.innerHTML = `<small>${total} canali trovati${total > items.length ? ', mostro i primi ' + items.length + ': affina la ricerca' : ''}</small>` +
+    items.map((c) => {
+      CH[i + c.h] = c;
+      const o = ov[c.h] || {}, v = (f) => esc(o[f] !== undefined ? o[f] : c[f]);
+      return `<div class="card" style="padding:8px" id="r${i}${c.h}"><small>${esc(c.n)}${ov[c.h] ? ' ✎' : ''}</small>
+        <input data-f="n" value="${v('n')}" placeholder="Nome"><input data-f="i" value="${v('i')}" placeholder="tvg-id"><input data-f="g" value="${v('g')}" placeholder="Gruppo"><input data-f="l" value="${v('l')}" placeholder="Logo (URL)">
+        <button onclick="sch(${i},'${c.h}')">Salva</button><button class="s" onclick="rch(${i},'${c.h}')">Ripristina</button></div>`;
+    }).join('');
+}
+function sch(i, h) {
+  const s = D.s[i], o = CH[i + h], card = $('r' + i + h), ov = {};
+  card.querySelectorAll('input').forEach((e) => { if (e.value !== o[e.dataset.f]) ov[e.dataset.f] = e.value; });
+  s.o = s.o || {};
+  if (Object.keys(ov).length) s.o[h] = ov; else delete s.o[h];
+  upd();
+  card.querySelector('small').textContent = o.n + (s.o[h] ? ' ✎ salvato' : '');
+}
+function rch(i, h) { delete (D.s[i].o || {})[h]; upd(); cgo(i); }
+
+function del(i) {
+  if (confirm('Eliminare questa lista?')) { D.s.splice(i, 1); render(); }
+}
+function ty() {
+  const t = $('t').value;
+  $('us').hidden = $('pw').hidden = t !== 'xtream';
+  $('m').hidden = t !== 'stalker';
+  $('u').placeholder = t === 'm3u' ? 'URL lista M3U' : t === 'xtream' ? 'Server (http://host:porta)' : 'Portale (http://host/c/)';
+}
+function add() {
+  const t = $('t').value;
+  const s = { t, n: $('n').value || t, u: $('u').value.trim(), x: [], e: 1 };
+  if (!s.u) return alert('Inserisci l’URL');
+  if (t === 'xtream') { s.a = $('us').value.trim(); s.p = $('pw').value.trim(); }
+  if (t === 'stalker') s.m = $('m').value.trim().toUpperCase();
+  D.s.push(s);
+  ['n', 'u', 'us', 'pw', 'm'].forEach((x) => ($(x).value = ''));
+  render();
+}
+function addEpg() {
+  const v = $('ei').value.trim();
+  if (!/^https?:\/\//.test(v)) return alert('Inserisci un URL valido');
+  (D.g = D.g || []).push(v);
+  $('ei').value = '';
+  render();
+}
+async function imp() {
+  try {
+    const k = D.k;
+    D = await dec(new URL($('imp').value.trim()).searchParams.get('c'));
+    D.k = k;
+    $('imp').value = '';
+    render();
+  } catch { alert('Link non valido'); }
+}
+ty();
+boot();
+</script>
+</body>
+</html>

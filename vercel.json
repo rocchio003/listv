@@ -1,0 +1,7 @@
+{
+  "regions": ["fra1"],
+  "rewrites": [
+    { "source": "/playlist.m3u", "destination": "/api/playlist" },
+    { "source": "/epg.xml", "destination": "/api/epg" }
+  ]
+}

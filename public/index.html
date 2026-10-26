@@ -4,10 +4,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>IPTV Hub</title>
-<<<<<<< HEAD
-<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-=======
->>>>>>> f25d892d773ca18792375910bfddbd991e0c0b10
 <style>
 :root{color-scheme:dark light;--b:#14161a;--c:#1e2127;--t:#e8eaed;--a:#4f8cff;--m:#8a919c}
 @media(prefers-color-scheme:light){:root{--b:#f4f5f7;--c:#fff;--t:#1a1c20;--m:#6b7280}}
@@ -77,16 +73,6 @@ small{color:var(--m)}
   <button class="s" onclick="imp()">Carica configurazione</button>
 </div>
 
-<<<<<<< HEAD
-<h2>Player di test</h2>
-<div class="card">
-  <input id="turl" placeholder="Incolla URL stream (HLS / m3u8 / mp4)">
-  <div class="row"><button onclick="playTest()">Riproduci</button><button class="s" onclick="stopTest()">Ferma</button></div>
-  <div style="margin-top:10px"><video id="vtest" controls style="width:100%;max-height:360px;background:#000;border-radius:8px" hidden></video></div>
-</div>
-
-=======
->>>>>>> f25d892d773ca18792375910bfddbd991e0c0b10
 <script>
 const $ = (i) => document.getElementById(i);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -158,11 +144,6 @@ function render() {
       <div class="row">
         <label><input type="checkbox" ${s.e !== 0 ? 'checked' : ''} onchange="D.s[${i}].e=this.checked?1:0;upd()">attiva</label>
         <label><input type="checkbox" ${s.pf ? 'checked' : ''} onchange="D.s[${i}].pf=this.checked?1:0;upd()">nome lista nei gruppi</label>
-<<<<<<< HEAD
-        <button class="s" onclick="move(${i}, -1)" ${i === 0 ? 'disabled style="opacity:0.4"' : ''}>⬆</button>
-        <button class="s" onclick="move(${i}, 1)" ${i === D.s.length - 1 ? 'disabled style="opacity:0.4"' : ''}>⬇</button>
-=======
->>>>>>> f25d892d773ca18792375910bfddbd991e0c0b10
         <button class="s" onclick="edit(${i})">Modifica</button>
         <button class="s" onclick="groups(${i})">Gruppi</button>
         <button class="s" onclick="chans(${i})">Canali</button>
@@ -174,42 +155,6 @@ function render() {
   upd();
 }
 
-<<<<<<< HEAD
-function move(i, dir) {
-  const target = i + dir;
-  if (target < 0 || target >= D.s.length) return;
-  const temp = D.s[i];
-  D.s[i] = D.s[target];
-  D.s[target] = temp;
-  render();
-}
-
-let hlsInstance = null;
-function playTest() {
-  const url = $('turl').value.trim();
-  const v = $('vtest');
-  v.hidden = false;
-  if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
-  if (url.includes('.m3u8') && Hls.isSupported()) {
-    hlsInstance = new Hls();
-    hlsInstance.loadSource(url);
-    hlsInstance.attachMedia(v);
-    hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => v.play());
-  } else {
-    v.src = url;
-    v.play().catch(() => alert('Errore riproduzione'));
-  }
-}
-function stopTest() {
-  const v = $('vtest');
-  v.pause();
-  v.src = '';
-  v.hidden = true;
-  if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
-}
-
-=======
->>>>>>> f25d892d773ca18792375910bfddbd991e0c0b10
 async function groups(i) {
   const s = D.s[i], el = $('g' + i);
   el.textContent = 'Carico i gruppi…';

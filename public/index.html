@@ -1,363 +1,192 @@
 <!doctype html>
 <html lang="it">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>IPTV Hub v2.0</title>
-  <style>
-    :root {
-      color-scheme: dark light;
-      --b: #14161a; --c: #1e2127; --t: #e8eaed; --a: #4f8cff; --m: #8a919c;
-      --success: #22c55e; --error: #ef4444;
-    }
-    @media (prefers-color-scheme: light) {
-      :root { --b: #f4f5f7; --c: #ffffff; --t: #1a1c20; --m: #6b7280; }
-    }
-
-    * { box-sizing: border-box; }
-
-    body {
-      margin: 0 auto;
-      max-width: 900px;
-      padding: 24px;
-      font: 16px system-ui, -apple-system, sans-serif;
-      background: var(--b);
-      color: var(--t);
-      line-height: 1.6;
-    }
-
-    h1 { font-size: 26px; margin: 0 0 24px; font-weight: 700; letter-spacing: -0.5px; }
-    h2 { font-size: 18px; margin: 32px 0 16px; font-weight: 600; border-bottom: 1px solid var(--m); padding-bottom: 8px; opacity: 0.9; }
-
-    .card {
-      background: var(--c);
-      border-radius: 16px;
-      padding: 24px;
-      margin: 16px 0;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    }
-
-    input, select, button {
-      font: inherit;
-      color: inherit;
-      background: transparent;
-      border: 1px solid #8884;
-      border-radius: 10px;
-      padding: 12px 16px;
-      margin: 6px 0;
-      width: 100%;
-      transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
-    }
-
-    input:focus, select:focus {
-      outline: none;
-      border-color: var(--a);
-      box-shadow: 0 0 0 3px rgba(79, 140, 255, 0.2);
-    }
-
-    button {
-      width: auto;
-      cursor: pointer;
-      background: var(--a);
-      border: 0;
-      color: #fff;
-      font-weight: 600;
-      margin-right: 8px;
-      margin-top: 8px;
-    }
-    button:hover { filter: brightness(1.1); }
-    button:disabled { opacity: 0.6; cursor: not-allowed; }
-    
-    button.s { background: #8883; color: var(--t); }
-    button.s:hover { background: #8885; }
-
-    .row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 12px; }
-    .row label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
-    .row input[type="checkbox"] { width: 18px; height: 18px; margin: 0; cursor: pointer; }
-
-    small { color: var(--m); display: block; margin-bottom: 8px; }
-
-    /* Griglia per i gruppi: risolve il problema della lista troppo compressa */
-    .grp {
-      max-height: 400px;
-      overflow-y: auto;
-      margin-top: 16px;
-      border: 1px solid #8883;
-      border-radius: 12px;
-      padding: 16px;
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-      gap: 8px;
-      background: rgba(0,0,0,0.02);
-    }
-    .grp label {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 10px 12px;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: background 0.15s;
-      font-size: 15px;
-    }
-    .grp label:hover { background: #8882; }
-    .grp input[type="checkbox"] { width: 16px; height: 16px; margin: 0; accent-color: var(--a); }
-
-    .grp-controls {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-top: 12px;
-      padding-bottom: 8px;
-      border-bottom: 1px solid #8883;
-    }
-    .grp-controls button {
-      font-size: 13px;
-      padding: 6px 12px;
-      margin: 0 4px 0 0;
-    }
-
-    /* Utility per stati e loading */
-    .status-ok { color: var(--success); font-weight: 600; display: flex; align-items: center; gap: 6px; }
-    .status-err { color: var(--error); font-weight: 600; display: flex; align-items: center; gap: 6px; }
-    .spinner {
-      display: inline-block; width: 16px; height: 16px;
-      border: 2px solid currentColor; border-top-color: transparent;
-      border-radius: 50%; animation: spin 0.8s linear infinite;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    
-    .source-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
-    .source-header b { font-size: 18px; }
-    .source-type { font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; background: #8883; padding: 2px 8px; border-radius: 6px; }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>IPTV Hub</title>
+<style>
+:root{color-scheme:dark light;--b:#14161a;--c:#1e2127;--t:#e8eaed;--a:#4f8cff;--m:#8a919c}
+@media(prefers-color-scheme:light){:root{--b:#f4f5f7;--c:#fff;--t:#1a1c20;--m:#6b7280}}
+*{box-sizing:border-box}
+body{margin:0 auto;max-width:720px;padding:14px;font:15px system-ui,sans-serif;background:var(--b);color:var(--t)}
+h1{font-size:20px;margin:6px 0 12px}h2{font-size:16px;margin:20px 0 8px}
+.card{background:var(--c);border-radius:12px;padding:12px;margin:10px 0}
+input,select,button{font:inherit;color:inherit;background:transparent;border:1px solid #8884;border-radius:8px;padding:9px 10px;margin:3px 0;width:100%}
+button{width:auto;cursor:pointer;background:var(--a);border:0;color:#fff;margin-right:6px}
+button.s{background:#8883;color:var(--t)}
+button.t{background:#2a9d8f;color:#fff} /* Stile per il pulsante di test */
+.row{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:6px}
+.row label{display:flex;align-items:center;gap:6px;margin-right:8px}.row input{width:auto}
+small{color:var(--m)}
+.grp{max-height:260px;overflow:auto;margin-top:6px;color:var(--t)} /* Colore esplicito per leggibilità */
+.grp label{display:flex;gap:8px;align-items:center;padding:5px 0}.grp input{width:auto;margin:0}
+</style>
 </head>
 <body>
+<h1>📺 IPTV Hub</h1>
 
-  <h1>📺 IPTV Hub <small style="display:inline; font-size: 16px; font-weight: 400; margin-left: 8px;">v2.0 Ottimizzato</small></h1>
-
-  <!-- CARD 1: Link Generato -->
-  <div class="card">
-    <small>🔗 Link unico per il player (contiene tutta la configurazione in modo sicuro)</small>
-    <input id="link" readonly onclick="this.select()" style="font-family: monospace; font-size: 14px;">
-    <small id="len"></small>
-    <div class="row">
-      <button onclick="navigator.clipboard.writeText($('link').value); this.innerHTML='✅ Copiato!'; setTimeout(()=>this.innerHTML='📋 Copia link', 2000)">📋 Copia link</button>
-      <button class="s" onclick="$('link').value && window.open($('link').value)">🚀 Apri / Testa nel browser</button>
-   2</div>
+<div class="card">
+  <small>Link unico per il player (contiene tutta la configurazione)</small>
+  <input id="link" readonly onclick="this.select()">
+  <small id="len"></small>
+  <div class="row">
+    <button onclick="navigator.clipboard.writeText($('link').value);this.textContent='Copiato ✓'">Copia link</button>
+    <button class="s" onclick="$('link').value&&window.open($('link').value)">Apri / testa</button>
   </div>
+</div>
 
-  <!-- CARD 2: Liste Configurate -->
-  <h2>📂 Le tue Liste</h2>
-  <div id="list"></div>
+<h2>Liste</h2>
+<div id="list"></div>
 
-  <!-- CARD 3: Aggiungi Lista -->
-  <h2>➕ Aggiungi nuova lista</h2>
-  <div class="card">
-    <select id="t" onchange="ty()">
-      <option value="m3u">📄 M3U (URL diretto)</option>
-      <option value="xtream">⚡ Xtream Codes</option>
-      <option value="stalker">📺 Stalker / MAC Portal</option>
-    </select>
-    <input id="n" placeholder="Nome identificativo (es. Lista Principale)">
-    <input id="u" placeholder="URL lista M3U (http://...)">
-    <input id="us" placeholder="Username" hidden>
-    <input id="pw" placeholder="Password" hidden>
-    <input id="m" placeholder="MAC Address (es. 00:1A:79:XX:XX:XX)" hidden>
-    
-    <div class="row">
-      <button id="btnTest" class="s" onclick="testSource()">🔍 Testa Fonte</button>
-      <button onclick="add()">💾 Aggiungi alla configurazione</button>
-    </div>
-    <div id="testResult" style="margin-top: 12px; min-height: 24px;"></div>
+<h2>Aggiungi lista</h2>
+<div class="card">
+  <select id="t" onchange="ty()">
+    <option value="m3u">M3U (URL)</option>
+    <option value="xtream">Xtream Codes</option>
+    <option value="stalker">Stalker / MAC</option>
+  </select>
+  <input id="n" placeholder="Nome">
+  <input id="u" placeholder="URL lista M3U">
+  <input id="us" placeholder="Username" hidden>
+  <input id="pw" placeholder="Password" hidden>
+  <input id="m" placeholder="MAC (00:1A:79:...)" hidden>
+  <div class="row">
+    <button onclick="add()">+ Aggiungi</button>
+    <button class="t" id="testBtn" onclick="testLink()">Testa link</button>
   </div>
+</div>
 
-  <!-- CARD 4: Importa -->
-  <h2>📥 Importa configurazione</h2>
-  <div class="card">
-    <small>Incolla qui un link IPTV Hub precedentemente generato per modificarlo</small>
-    <input id="imp" placeholder="https://...?c=...">
-    <button class="s" onclick="imp()" style="width: 100%; margin-top: 12px;">Carica configurazione</button>
-  </div>
+<h2>Modifica un link esistente</h2>
+<div class="card">
+  <input id="imp" placeholder="Incolla qui un link già generato">
+  <button class="s" onclick="imp()">Carica configurazione</button>
+</div>
 
-  <script>
-    const $ = (i) => document.getElementById(i);
-    const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({'&': '&amp;','<': '&lt;','>': '&gt;','"': '&quot;', "'": '&#39;'}[c]));
-    const b64e = (u) => btoa(String.fromCharCode(...new Uint8Array(u))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
-    const b64d = (s) => Uint8Array.from(atob(s.replace(/-/g,'+').replace(/_/g,'/')), (c) => c.charCodeAt(0));
-    
-    const enc = async (o) => b64e(await new Response(new Blob([JSON.stringify(o)]).stream().pipeThrough(new CompressionStream('deflate-raw'))).arrayBuffer());
-    const dec = async (t) => JSON.parse(await new Response(new Blob([b64d(t)]).stream().pipeThrough(new DecompressionStream('deflate-'))).text());
+<script>
+const $ = (i) => document.getElementById(i);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const b64e = (u) => btoa(String.fromCharCode(...u)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const b64d = (s) => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0));
+const enc = async (o) =>
+  b64e(new Uint8Array(await new Response(new Blob([JSON.stringify(o)]).stream().pipeThrough(new CompressionStream('deflate-raw'))).arrayBuffer()));
+const dec = async (t) =>
+  JSON.parse(await new Response(new Blob([b64d(t)]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text());
 
-    let D = { s: [] };
-    try { D = JSON.parse(localStorage.cfg) || D; } catch {}
+let D = { s: [] };
+try { D = JSON.parse(localStorage.cfg) || D; } catch {}
 
-    async function upd() {
-      try { localStorage.cfg = JSON.stringify(D); } catch {}
-      const l = D.s.length ? location.origin + '/playlist.m3u?c=' + (await enc(D)) : '';
-      $('link').value = l;
-      $('len').textContent = l ? `${l.length} caratteri` + (l.length > 2000 ? ' ⚠️ Link molto lungo: alcuni player potrebbero rifiutarlo. Prova a escludere gruppi o usare meno liste.' : '') : '';
+async function upd() {
+  try { localStorage.cfg = JSON.stringify(D); } catch {}
+  const l = D.s.length ? location.origin + '/playlist.m3u?c=' + (await enc(D)) : '';
+  $('link').value = l;
+  $('len').textContent = l ? l.length + ' caratteri' + (l.length > 2000 ? ' ⚠️ link lungo: alcuni player potrebbero rifiutarlo, escludi meno gruppi o usa meno liste' : '') : '';
+}
+
+function render() {
+  $('list').innerHTML = D.s.map((s, i) => `
+    <div class="card">
+      <b>${esc(s.n)}</b> <small>${s.t}${(s.x || []).length ? ' · ' + s.x.length + ' gruppi esclusi' : ''}</small>
+      <div class="row">
+        <label><input type="checkbox" ${s.e !== 0 ? 'checked' : ''} onchange="D.s[${i}].e=this.checked?1:0;upd()">attiva</label>
+        <button class="s" onclick="groups(${i})">Gruppi</button>
+        <button class="s" onclick="del(${i})">Elimina</button>
+      </div>
+      <div id="g${i}"></div>
+    </div>`).join('') || '<small>Nessuna lista ancora.</small>';
+  upd();
+}
+
+async function groups(i) {
+  const s = D.s[i], el = $('g' + i);
+  el.textContent = 'Carico i gruppi…';
+  const r = await fetch(`/api/playlist?groups=${i}&c=${await enc(D)}`);
+  if (!r.ok) { el.textContent = 'Errore: ' + (await r.text()); return; }
+  const g = await r.json();
+  s.x = s.x || [];
+  // Rimosso il campo di ricerca come richiesto
+  el.innerHTML = '<div class="grp">' +
+    Object.entries(g).sort().map(([n, c]) =>
+      `<label><input type="checkbox" data-n="${esc(n)}" ${s.x.includes(n) ? '' : 'checked'} onchange="tg(${i},this)">${esc(n)} <small>(${c})</small></label>`
+    ).join('') + '</div><small>Spunta = incluso. Il link si aggiorna da solo.</small>';
+}
+
+function tg(i, e) {
+  const s = D.s[i], n = e.dataset.n;
+  s.x = (s.x || []).filter((v) => v !== n);
+  if (!e.checked) s.x.push(n);
+  upd();
+}
+
+function del(i) {
+  if (confirm('Eliminare questa lista?')) { D.s.splice(i, 1); render(); }
+}
+
+function ty() {
+  const t = $('t').value;
+  $('us').hidden = $('pw').hidden = t !== 'xtream';
+  $('m').hidden = t !== 'stalker';
+  $('u').placeholder = t === 'm3u' ? 'URL lista M3U' : t === 'xtream' ? 'Server (http://host:porta)' : 'Portale (http://host/c/)';
+}
+
+// Nuova funzione per testare il link prima di aggiungerlo
+async function testLink() {
+  const t = $('t').value;
+  const u = $('u').value.trim();
+  if (!u) return alert('Inserisci l’URL per poterlo testare');
+  
+  const s = { t, n: $('n').value || t, u, x: [], e: 1 };
+  if (t === 'xtream') { s.a = $('us').value.trim(); s.p = $('pw').value.trim(); }
+  if (t === 'stalker') s.m = $('m').value.trim().toUpperCase();
+  
+  const tempCfg = { s: [s] };
+  const btn = $('testBtn');
+  const originalText = btn.textContent;
+  btn.textContent = 'Test in corso...';
+  btn.disabled = true;
+  
+  try {
+    const c = await enc(tempCfg);
+    const r = await fetch(`/api/playlist?groups=0&c=${c}`);
+    if (!r.ok) {
+      const errText = await r.text();
+      alert('❌ Errore nel test: ' + errText);
+    } else {
+      const g = await r.json();
+      const groupCount = Object.keys(g).length;
+      alert(`✅ Link valido! Trovati ${groupCount} gruppi.`);
     }
+  } catch (e) {
+    alert('❌ Errore di rete o configurazione non valida: ' + e.message);
+  } finally {
+    btn.textContent = originalText;
+    btn.disabled = false;
+  }
+}
 
-    function render() {
-      $('list').innerHTML = D.s.length ? D.s.map((s, i) => `
-        <div class="card">
-          <div class="source-header">
-            <b>${esc(s.n || 'Senza nome')}</b>
-            <span class="source-type">${s.t}</span>
-          </div>
-          <small>${(s.x || []).length ? '🚫 ' + s.x.length + ' gruppi esclusi' : '✅ Tutti i gruppi inclusi'}</small>
-          <div class="row">
-            <label><input type="checkbox" ${s.e !== 0 ? 'checked' : ''} onchange="D.s[${i}].e = this.checked ? 1 : 0; upd()"> Lista attiva</label>
-            <button class="s" onclick="groups(${i})">⚙️ Filtra Gruppi</button>
-            <button class="s" style="color: var(--error);" onclick="del(${i})">🗑️ Elimina</button>
-          </div>
-          <div id="g${i}"></div>
-        </div>
-      `).join('') : '<div class="card" style="text-align:center; padding: 40px;"><small>Nessuna lista configurata. Aggiungine una qui sotto!</small></div>';
-      upd();
-    }
+function add() {
+  const t = $('t').value;
+  const u = $('u').value.trim();
+  if (!u) return alert('Inserisci l’URL');
+  
+  const s = { t, n: $('n').value || t, u, x: [], e: 1 };
+  if (t === 'xtream') { s.a = $('us').value.trim(); s.p = $('pw').value.trim(); }
+  if (t === 'stalker') s.m = $('m').value.trim().toUpperCase();
+  
+  D.s.push(s);
+  ['n', 'u', 'us', 'pw', 'm'].forEach((x) => ($(x).value = ''));
+  render();
+}
 
-    async function groups(i) {
-      const s = D.s[i], el = $('g' + i);
-      el.innerHTML = '<div style="padding: 20px; text-align: center;"><span class="spinner"></span> Caricamento gruppi in corso...</div>';
-      
-      try {
-        const r = await fetch(`/api/playlist?groups=${i}&c=${await enc(D)}`);
-        if (!r.ok) throw new Error(await r.text());
-        const g = await r.json();
-        s.x = s.x || [];
-        
-        const sortedGroups = Object.entries(g).sort((a, b) => a[0].localeCompare(b[0]));
-        
-        el.innerHTML = `
-          <div class="grp-controls">
-            <input placeholder="🔎 Cerca gruppo..." oninput="flt(this)" style="width: 100%; max-width: 300px; margin: 0;">
-            <div>
-              <button class="s" onclick="toggleAllGroups(${i}, true)">Seleziona Tutti</button>
-              <button class="s" onclick="toggleAllGroups(${i}, false)">Deseleziona Tutti</button>
-            </div
-          </div>
-          <div class="grp">
-            ${sortedGroups.map(([n, c]) => `
-              <label>
-                <input type="checkbox" data-n="${esc(n)}" ${s.x.includes(n) ? '' : 'checked'} onchange="tg(${i}, this)">
-                <span>${esc(n)}</span>
-                <small style="margin:0; margin-left:auto;">(${c})</small>
-              </label>
-            `).join('')}
-          </div>
-          <small style="margin-top: 8px;">💡 Spunta = incluso. Il link si aggiorna automaticamente.</small>
-        `;
-      } catch (e) {
-        el.innerHTML = `<div class="status-err" style="padding: 12px;">❌ Errore nel caricamento: ${esc(e.message)}</div>`;
-      }
-    }
-
-    function toggleAllGroups(i, checkState) {
-      const checkboxes = document.querySelectorAll(`#g${i} .grp input[type="checkbox"]`);
-      checkboxes.forEach(cb => {
-        if (cb.checked !== checkState) {
-          cb.checked = checkState;
-          tg(i, cb);
-        }
-      });
-    }
-
-    function tg(i, e) {
-      const s = D.s[i], n = e.dataset.n;
-      s.x = (s.x || []).filter((v) => v !== n);
-      if (!e.checked) s.x.push(n);
-      upd();
-    }
-
-    function flt(e) {
-      const q = e.value.toLowerCase();
-      e.parentElement.nextElementSibling.querySelectorAll('label').forEach((l) => {
-        l.style.display = l.textContent.toLowerCase().includes(q) ? 'flex' : 'none';
-      });
-    }
-
-    function del(i) {
-      if (confirm('Sei sicuro di voler eliminare questa lista?')) {
-        D.s.splice(i, 1);
-        render();
-      }
-    }
-
-    function ty() {
-      const t = $('t').value;
-      $('us').hidden = $('pw').hidden = t !== 'xtream';
-      $('m').hidden = t !== 'stalker';
-      $('u').placeholder = t === 'm3u' ? 'URL lista M3U (http://...)' : t === 'xtream' ? 'URL Server (http://host:porta)' : 'URL Portale (http://host/c/)';
-    }
-
-    function add() {
-      const t = $('t').value;
-      const s = { t, n: $('n').value || t, u: $('u').value.trim(), x: [], e: 1 };
-      if (!s.u) return alert('⚠️ Inserisci almeno l\'URL del server/lista.');
-      if (t === 'xtream') { s.a = $('us').value.trim(); s.p = $('pw').value.trim(); }
-      if (t === 'stalker') s.m = $('m').value.trim().toUpperCase();
-      
-      D.s.push(s);
-      ['n', 'u', 'us', 'pw', 'm'].forEach((x) => ($ (x).value = ''));
-      $('testResult').innerHTML = '';
-      render();
-    }
-
-    async function imp() {
-      try {
-        D = await dec(new URL($('imp').value.trim()).searchParams.get('c'));
-        $('imp').value = '';
-        render();
-        alert('✅ Configurazione caricata con successo!');
-      } catch {
-        alert('❌ Link non valido o corrotto. Controlla di averlo copiato interamente.');
-      }
-    }
-
-    // Funzione di test della fonte (richiede api/test.js sul backend)
-    async function testSource() {
-      const t = $('t').value;
-      const u = $('u').value.trim();
-      const btn = $('btnTest');
-      const resDiv = $('testResult');
-
-      if (!u) {
-        resDiv.innerHTML = '<span class="status-err">⚠️ Inserisci prima un URL valido.</span>';
-        return;
-      }
-
-      btn.disabled = true;
-      btn.innerHTML = '<span class="spinner"></span> Verifica in corso...';
-      resDiv.innerHTML = '';
-
-      const params = new URLSearchParams({
-        t: t, u: u,
-        a: $('us').value.trim(),
-        p: $('pw').value.trim(),
-        m: $('m').value.trim().toUpperCase()
-      });
-
-      try {
-        const r = await fetch(`/api/test?${params.toString()}`);
-        const data = await r.json();
-        if (data.status === 'ok') {
-          resDiv.innerHTML = `<span class="status-ok">✅ ${data.message}</span>`;
-        } else {
-          resDiv.innerHTML = `<span class="status-err">❌ ${data.message}</span>`;
-        }
-      } catch (e) {
-        resDiv.innerHTML = `<span class="status-err">❌ Impossibile contattare il server per il test. Assicurati che il backend sia attivo.</span>`;
-      } finally {
-        btn.disabled = false;
-        btn.innerHTML = '🔍 Testa Fonte';
-      }
-    }
-
-    // Inizializzazione
-    ty();
+async function imp() {
+  try {
+    D = await dec(new URL($('imp').value.trim()).searchParams.get('c'));
+    $('imp').value = '';
     render();
-  </script>
+  } catch { alert('Link non valido'); }
+}
+
+ty();
+render();
+</script>
 </body>
 </html>

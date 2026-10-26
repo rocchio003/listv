@@ -125,50 +125,8 @@ async function stalkerChannels(api, H) {
   return data;
 }
 
-<<<<<<< HEAD
-export async function getCache(key) {
-  if (!DB_URL || !DB_TOK) return null;
-  try {
-    const j = await (await fetch(`${DB_URL}/get/cache:${key}`, { headers: dbAuth() })).json();
-    return j.result ? JSON.parse(j.result) : null;
-  } catch {
-    return null;
-  }
-}
-
-export async function setCache(key, val, ttlSeconds = 600) {
-  if (!DB_URL || !DB_TOK) return;
-  try {
-    await fetch(DB_URL, {
-      method: 'POST',
-      headers: dbAuth(),
-      body: JSON.stringify(['SET', `cache:${key}`, JSON.stringify(val), 'EX', String(ttlSeconds)])
-    });
-  } catch {}
-}
-
 // Sorgente {t,n,u,a,p,m,x,e} -> [{group, inf, extra, url}]
 export async function collect(s, origin) {
-  const cacheKey = hash('sha1', JSON.stringify({ t: s.t, u: s.u, m: s.m, a: s.a, p: s.p })).slice(0, 16);
-  const cached = await getCache(cacheKey);
-  if (cached && Array.isArray(cached) && cached.length > 0) {
-    if (s.t === 'stalker') {
-      const sid = b64e(new TextEncoder().encode(`${s.u}|${s.m}`));
-      return cached.map((c) => ({
-        group: c.group,
-        inf: c.inf,
-        extra: c.extra,
-        url: `${origin}/api/play?s=${sid}&c=${encodeURIComponent(c.cmd)}`,
-      }));
-    }
-    return cached;
-  }
-
-  let items;
-=======
-// Sorgente {t,n,u,a,p,m,x,e} -> [{group, inf, extra, url}]
-export async function collect(s, origin) {
->>>>>>> f25d892d773ca18792375910bfddbd991e0c0b10
   if (s.t === 'stalker') {
     const { api, H } = await stalkerLogin(s.u, s.m);
     const gj = await jget(`${api}?type=itv&action=get_genres&JsHttpRequest=1-xml`, H, 'generi').catch(() => ({}));
@@ -176,11 +134,7 @@ export async function collect(s, origin) {
     (Array.isArray(gj.js) ? gj.js : []).forEach((g) => (gm[g.id] = g.title));
     const data = await stalkerChannels(api, H);
     const sid = b64e(new TextEncoder().encode(`${s.u}|${s.m}`));
-<<<<<<< HEAD
-    items = data.map((c) => {
-=======
     return data.map((c) => {
->>>>>>> f25d892d773ca18792375910bfddbd991e0c0b10
       const g = String(gm[c.tv_genre_id] || 'Senza gruppo').replace(/"/g, "'");
       const logo = /^http/.test(c.logo || '') ? c.logo : '';
       return {
@@ -188,24 +142,6 @@ export async function collect(s, origin) {
         inf: `#EXTINF:-1 tvg-id="${c.xmltv_id || ''}" tvg-logo="${logo}" group-title="${g}",${c.name}`,
         extra: '',
         url: `${origin}/api/play?s=${sid}&c=${encodeURIComponent(c.cmd)}`,
-<<<<<<< HEAD
-        cmd: c.cmd,
-      };
-    });
-  } else {
-    const url =
-      s.t === 'xtream'
-        ? `${s.u.trim().replace(/\/+$/, '')}/get.php?username=${encodeURIComponent(s.a)}&password=${encodeURIComponent(s.p)}&type=m3u_plus&output=ts`
-        : s.u.trim();
-    const r = await get(url);
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    items = parseM3U(await r.text());
-  }
-
-  const toCache = s.t === 'stalker' ? items.map(({ url, ...rest }) => rest) : items;
-  await setCache(cacheKey, toCache, 600);
-  return items;
-=======
       };
     });
   }
@@ -216,7 +152,6 @@ export async function collect(s, origin) {
   const r = await get(url);
   if (!r.ok) throw new Error('HTTP ' + r.status);
   return parseM3U(await r.text());
->>>>>>> f25d892d773ca18792375910bfddbd991e0c0b10
 }
 
 // ---- EPG ----

@@ -11,10 +11,8 @@
 body{margin:0 auto;max-width:720px;padding:14px;font:15px system-ui,sans-serif;background:var(--b);color:var(--t)}
 h1{font-size:20px;margin:6px 0 12px}h2{font-size:16px;margin:20px 0 8px}
 
-/* Scheda base con transizione morbida */
 .card{background:var(--c);border-radius:12px;padding:12px;margin:10px 0;border-left:4px solid transparent;transition:background 0.2s, border-color 0.2s}
 
-/* Colori distintivi leggeri per ogni tipo (usa color-mix per adattarsi automaticamente a tema chiaro/scuro) */
 .card.type-m3u{border-left-color:#4f8cff;background:color-mix(in srgb, var(--c) 94%, #4f8cff)}
 .card.type-xtream{border-left-color:#2a9d8f;background:color-mix(in srgb, var(--c) 94%, #2a9d8f)}
 .card.type-stalker{border-left-color:#e76f51;background:color-mix(in srgb, var(--c) 94%, #e76f51)}
@@ -44,7 +42,7 @@ small{color:var(--m)}
   </div>
 </div>
 
-<h2>Liste</h2>
+<h2>Liste canali</h2>
 <div id="list"></div>
 
 <h2>Aggiungi lista</h2>
@@ -53,7 +51,6 @@ small{color:var(--m)}
     <option value="m3u">M3U (URL)</option>
     <option value="xtream">Xtream Codes</option>
     <option value="stalker">Stalker / MAC</option>
-    <option value="epg">EPG (XMLTV URL)</option>
   </select>
   <input id="n" placeholder="Nome">
   <input id="u" placeholder="URL lista M3U">
@@ -63,6 +60,19 @@ small{color:var(--m)}
   <div class="row">
     <button onclick="add()">+ Aggiungi</button>
     <button class="t" id="testBtn" onclick="testLink()">Testa link</button>
+  </div>
+</div>
+
+<h2>📅 Sorgenti EPG</h2>
+<div id="epgList"></div>
+
+<h2>Aggiungi sorgente EPG</h2>
+<div class="card type-epg">
+  <input id="epgN" placeholder="Nome (es. EPG Italia)">
+  <input id="epgU" placeholder="URL XMLTV EPG (es. http://epg.provider.com/guide.xml)">
+  <div class="row">
+    <button onclick="addEpg()">+ Aggiungi EPG</button>
+    <button class="t" id="testEpgBtn" onclick="testEpg()">Testa EPG</button>
   </div>
 </div>
 
@@ -82,14 +92,24 @@ const enc = async (o) =>
 const dec = async (t) =>
   JSON.parse(await new Response(new Blob([b64d(t)]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text());
 
-let D = { s: [] };
-try { D = JSON.parse(localStorage.cfg) || D; } catch {}
+let D = { s: [], g: [] };
+try { 
+  const saved = JSON.parse(localStorage.cfg);
+  if (saved) {
+    D.s = saved.s || [];
+    D.g = saved.g || [];
+  }
+} catch {}
 
 async function upd() {
   try { localStorage.cfg = JSON.stringify(D); } catch {}
-  const l = D.s.length ? location.origin + '/playlist.m3u?c=' + (await enc(D)) : '';
+  const hasSources = D.s.length > 0 || D.g.length > 0;
+  const l = hasSources ? location.origin + '/playlist.m3u?c=' + (await enc(D)) : '';
   $('link').value = l;
-  $('len').textContent = l ? l.length + ' caratteri' + (l.length > 2000 ? ' ⚠️ link lungo: alcuni player potrebbero rifiutarlo, escludi meno gruppi o usa meno liste' : '') : '';
+  const info = [];
+  if (D.s.length) info.push(`${D.s.length} liste`);
+  if (D.g.length) info.push(`${D.g.length} EPG`);
+  $('len').textContent = l ? l.length + ' caratteri · ' + info.join(', ') + (l.length > 2000 ? ' ⚠️ link lungo' : '') : '';
 }
 
 function render() {
@@ -103,6 +123,17 @@ function render() {
       </div>
       <div id="g${i}" data-state="closed"></div>
     </div>`).join('') || '<small>Nessuna lista ancora.</small>';
+  
+  $('epgList').innerHTML = D.g.map((g, i) => `
+    <div class="card type-epg">
+      <b>${esc(g.n)}</b> <small style="text-transform:uppercase;opacity:0.8">EPG</small>
+      <div class="row">
+        <label><input type="checkbox" ${g.e !== 0 ? 'checked' : ''} onchange="D.g[${i}].e=this.checked?1:0;upd()">attiva</label>
+        <button class="s" onclick="delEpg(${i})">Elimina</button>
+      </div>
+      <small style="display:block;margin-top:6px;word-break:break-all">${esc(g.u)}</small>
+    </div>`).join('') || '<small>Nessuna sorgente EPG ancora.</small>';
+  
   upd();
 }
 
@@ -116,13 +147,6 @@ async function groups(i) {
   }
 
   if (el.dataset.state === 'loading') return;
-
-  // Se è un link EPG, non ha senso cercare i gruppi, mostriamo solo un messaggio informativo
-  if (s.t === 'epg') {
-    el.dataset.state = 'open';
-    el.innerHTML = `<div style="padding:8px 0"><small>ℹ️ Le sorgenti EPG non hanno gruppi o canali filtrabili. Vengono unite automaticamente nel link principale.</small></div>`;
-    return;
-  }
 
   el.dataset.state = 'loading';
   el.textContent = 'Carico i gruppi…';
@@ -175,49 +199,33 @@ function del(i) {
   if (confirm('Eliminare questa lista?')) { D.s.splice(i, 1); render(); }
 }
 
+function delEpg(i) {
+  if (confirm('Eliminare questa sorgente EPG?')) { D.g.splice(i, 1); render(); }
+}
+
 function ty() {
   const t = $('t').value;
   $('us').hidden = $('pw').hidden = t !== 'xtream';
   $('m').hidden = t !== 'stalker';
   
-  // Aggiorna il placeholder e lo stile della scheda di aggiunta in base al tipo
   const addCard = $('t').closest('.card');
   addCard.className = `card type-${t}`;
   
   if (t === 'm3u') $('u').placeholder = 'URL lista M3U';
   else if (t === 'xtream') $('u').placeholder = 'Server (http://host:porta)';
   else if (t === 'stalker') $('u').placeholder = 'Portale (http://host/c/)';
-  else if (t === 'epg') $('u').placeholder = 'URL XMLTV EPG (es. http://epg.provider.com/guide.xml)';
 }
 
 async function testLink() {
   const t = $('t').value;
   const u = $('u').value.trim();
-  if (!u) return alert('Inserisci l’URL per poterlo testare');
+  if (!u) return alert('Inserisci l'URL per poterlo testare');
   
-  // Per EPG, facciamo un test di raggiungibilità semplice
-  if (t === 'epg') {
-    const btn = $('testBtn');
-    btn.textContent = 'Test in corso...';
-    btn.disabled = true;
-    try {
-      const r = await fetch(u, { method: 'HEAD' });
-      if (r.ok) alert('✅ URL EPG raggiungibile!');
-      else alert('⚠️ URL EPG non raggiungibile (HTTP ' + r.status + ')');
-    } catch (e) {
-      alert('❌ Errore di rete: ' + e.message);
-    } finally {
-      btn.textContent = 'Testa link';
-      btn.disabled = false;
-    }
-    return;
-  }
-
   const s = { t, n: $('n').value || t, u, x: [], e: 1 };
   if (t === 'xtream') { s.a = $('us').value.trim(); s.p = $('pw').value.trim(); }
   if (t === 'stalker') s.m = $('m').value.trim().toUpperCase();
   
-  const tempCfg = { s: [s] };
+  const tempCfg = { s: [s], g: [] };
   const btn = $('testBtn');
   const originalText = btn.textContent;
   btn.textContent = 'Test in corso...';
@@ -240,10 +248,30 @@ async function testLink() {
   }
 }
 
+async function testEpg() {
+  const u = $('epgU').value.trim();
+  if (!u) return alert('Inserisci l'URL EPG per poterlo testare');
+  
+  const btn = $('testEpgBtn');
+  btn.textContent = 'Test in corso...';
+  btn.disabled = true;
+  
+  try {
+    const r = await fetch(u, { method: 'HEAD' });
+    if (r.ok) alert('✅ URL EPG raggiungibile!');
+    else alert('⚠️ URL EPG non raggiungibile (HTTP ' + r.status + ')');
+  } catch (e) {
+    alert('❌ Errore di rete: ' + e.message);
+  } finally {
+    btn.textContent = 'Testa EPG';
+    btn.disabled = false;
+  }
+}
+
 function add() {
   const t = $('t').value;
   const u = $('u').value.trim();
-  if (!u) return alert('Inserisci l’URL');
+  if (!u) return alert('Inserisci l'URL');
   
   const s = { t, n: $('n').value || t, u, x: [], e: 1 };
   if (t === 'xtream') { s.a = $('us').value.trim(); s.p = $('pw').value.trim(); }
@@ -254,9 +282,22 @@ function add() {
   render();
 }
 
+function addEpg() {
+  const n = $('epgN').value.trim();
+  const u = $('epgU').value.trim();
+  if (!u) return alert('Inserisci l'URL EPG');
+  
+  D.g.push({ n: n || 'EPG', u, e: 1 });
+  $('epgN').value = '';
+  $('epgU').value = '';
+  render();
+}
+
 async function imp() {
   try {
-    D = await dec(new URL($('imp').value.trim()).searchParams.get('c'));
+    const decoded = await dec(new URL($('imp').value.trim()).searchParams.get('c'));
+    D.s = decoded.s || [];
+    D.g = decoded.g || [];
     $('imp').value = '';
     render();
   } catch { alert('Link non valido'); }

@@ -2,14 +2,44 @@ import { getCfg, collect, infParts, uh, applyOv } from './_lib.js';
 
 export const config = { maxDuration: 60 };
 
+// Funzione per recuperare configurazione da chiave utente
+async function getUserCfg(key) {
+  const DB_URL = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
+  const DB_TOK = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
+  const DB_KEY = `iptvhub:user:${key}`;
+  
+  if (!DB_URL || !DB_TOK) throw new Error('Database non configurato');
+  
+  const r = await fetch(`${DB_URL}/get/${DB_KEY}`, { 
+    headers: { Authorization: 'Bearer ' + DB_TOK } 
+  });
+  const j = await r.json();
+  if (!j.result) throw new Error('Chiave non valida o configurazione non trovata');
+  return JSON.parse(j.result);
+}
+
+// Modifica la funzione getCfg per supportare sia ?k= che ?c=
+async function getCfgFromRequest(q) {
+  if (q.has('k')) {
+    // Recupera dal database usando la chiave
+    return await getUserCfg(q.get('k'));
+  } else if (q.has('c')) {
+    // Decodifica dalla configurazione inline (vecchio metodo)
+    const b64d = (s) => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0));
+    const cfg = JSON.parse(await new Response(new Blob([b64d(q.get('c'))]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text());
+    return cfg;
+  }
+  throw new Error('Parametro mancante: usa ?k=chiave o ?c=configurazione');
+}
+
 export default async function handler(req, res) {
   const origin = `https://${req.headers.host}`;
   const q = new URL(req.url, origin).searchParams;
   let cfg;
   try {
-    cfg = await getCfg(q);
-  } catch {
-    return res.status(400).send('Link non valido');
+    cfg = await getCfgFromRequest(q);
+  } catch (e) {
+    return res.status(400).send('Link non valido: ' + e.message);
   }
 
   // Elenco gruppi di una sorgente (usato dal pannello)

@@ -10,7 +10,16 @@
 *{box-sizing:border-box}
 body{margin:0 auto;max-width:720px;padding:14px;font:15px system-ui,sans-serif;background:var(--b);color:var(--t)}
 h1{font-size:20px;margin:6px 0 12px}h2{font-size:16px;margin:20px 0 8px}
-.card{background:var(--c);border-radius:12px;padding:12px;margin:10px 0}
+
+/* Scheda base con transizione morbida */
+.card{background:var(--c);border-radius:12px;padding:12px;margin:10px 0;border-left:4px solid transparent;transition:background 0.2s, border-color 0.2s}
+
+/* Colori distintivi leggeri per ogni tipo (usa color-mix per adattarsi automaticamente a tema chiaro/scuro) */
+.card.type-m3u{border-left-color:#4f8cff;background:color-mix(in srgb, var(--c) 94%, #4f8cff)}
+.card.type-xtream{border-left-color:#2a9d8f;background:color-mix(in srgb, var(--c) 94%, #2a9d8f)}
+.card.type-stalker{border-left-color:#e76f51;background:color-mix(in srgb, var(--c) 94%, #e76f51)}
+.card.type-epg{border-left-color:#9b5de5;background:color-mix(in srgb, var(--c) 94%, #9b5de5)}
+
 input,select,button{font:inherit;color:inherit;background:transparent;border:1px solid #8884;border-radius:8px;padding:9px 10px;margin:3px 0;width:100%}
 button{width:auto;cursor:pointer;background:var(--a);border:0;color:#fff;margin-right:6px}
 button.s{background:#8883;color:var(--t)}
@@ -25,7 +34,7 @@ small{color:var(--m)}
 <body>
 <h1>📺 IPTV Hub</h1>
 
-<div class="card">
+<div class="card type-m3u">
   <small>Link unico per il player (contiene tutta la configurazione)</small>
   <input id="link" readonly onclick="this.select()">
   <small id="len"></small>
@@ -39,11 +48,12 @@ small{color:var(--m)}
 <div id="list"></div>
 
 <h2>Aggiungi lista</h2>
-<div class="card">
+<div class="card type-m3u">
   <select id="t" onchange="ty()">
     <option value="m3u">M3U (URL)</option>
     <option value="xtream">Xtream Codes</option>
     <option value="stalker">Stalker / MAC</option>
+    <option value="epg">EPG (XMLTV URL)</option>
   </select>
   <input id="n" placeholder="Nome">
   <input id="u" placeholder="URL lista M3U">
@@ -57,7 +67,7 @@ small{color:var(--m)}
 </div>
 
 <h2>Modifica un link esistente</h2>
-<div class="card">
+<div class="card type-m3u">
   <input id="imp" placeholder="Incolla qui un link già generato">
   <button class="s" onclick="imp()">Carica configurazione</button>
 </div>
@@ -84,8 +94,8 @@ async function upd() {
 
 function render() {
   $('list').innerHTML = D.s.map((s, i) => `
-    <div class="card">
-      <b>${esc(s.n)}</b> <small>${s.t}${(s.x || []).length ? ' · ' + s.x.length + ' gruppi esclusi' : ''}</small>
+    <div class="card type-${s.t || 'm3u'}">
+      <b>${esc(s.n)}</b> <small style="text-transform:uppercase;opacity:0.8">${s.t}</small> <small>${(s.x || []).length ? ' · ' + s.x.length + ' gruppi esclusi' : ''}</small>
       <div class="row">
         <label><input type="checkbox" ${s.e !== 0 ? 'checked' : ''} onchange="D.s[${i}].e=this.checked?1:0;upd()">attiva</label>
         <button class="s" onclick="groups(${i})">Gruppi</button>
@@ -99,15 +109,20 @@ function render() {
 async function groups(i) {
   const s = D.s[i], el = $('g' + i);
 
-  // 1. Se è già aperto, lo chiudiamo
   if (el.dataset.state === 'open') {
     el.innerHTML = '';
     el.dataset.state = 'closed';
     return;
   }
 
-  // 2. Evitiamo doppi click durante il caricamento
   if (el.dataset.state === 'loading') return;
+
+  // Se è un link EPG, non ha senso cercare i gruppi, mostriamo solo un messaggio informativo
+  if (s.t === 'epg') {
+    el.dataset.state = 'open';
+    el.innerHTML = `<div style="padding:8px 0"><small>ℹ️ Le sorgenti EPG non hanno gruppi o canali filtrabili. Vengono unite automaticamente nel link principale.</small></div>`;
+    return;
+  }
 
   el.dataset.state = 'loading';
   el.textContent = 'Carico i gruppi…';
@@ -123,7 +138,6 @@ async function groups(i) {
     const g = await r.json();
     s.x = s.x || [];
 
-    // Costruiamo il link sorgente completo da mostrare
     let sourceLink = s.u;
     if (s.t === 'xtream' && s.a && s.p) {
       sourceLink = `${s.u.replace(/\/+$/, '')}/get.php?username=${encodeURIComponent(s.a)}&password=${encodeURIComponent(s.p)}&type=m3u_plus&output=ts`;
@@ -165,7 +179,15 @@ function ty() {
   const t = $('t').value;
   $('us').hidden = $('pw').hidden = t !== 'xtream';
   $('m').hidden = t !== 'stalker';
-  $('u').placeholder = t === 'm3u' ? 'URL lista M3U' : t === 'xtream' ? 'Server (http://host:porta)' : 'Portale (http://host/c/)';
+  
+  // Aggiorna il placeholder e lo stile della scheda di aggiunta in base al tipo
+  const addCard = $('t').closest('.card');
+  addCard.className = `card type-${t}`;
+  
+  if (t === 'm3u') $('u').placeholder = 'URL lista M3U';
+  else if (t === 'xtream') $('u').placeholder = 'Server (http://host:porta)';
+  else if (t === 'stalker') $('u').placeholder = 'Portale (http://host/c/)';
+  else if (t === 'epg') $('u').placeholder = 'URL XMLTV EPG (es. http://epg.provider.com/guide.xml)';
 }
 
 async function testLink() {
@@ -173,6 +195,24 @@ async function testLink() {
   const u = $('u').value.trim();
   if (!u) return alert('Inserisci l’URL per poterlo testare');
   
+  // Per EPG, facciamo un test di raggiungibilità semplice
+  if (t === 'epg') {
+    const btn = $('testBtn');
+    btn.textContent = 'Test in corso...';
+    btn.disabled = true;
+    try {
+      const r = await fetch(u, { method: 'HEAD' });
+      if (r.ok) alert('✅ URL EPG raggiungibile!');
+      else alert('⚠️ URL EPG non raggiungibile (HTTP ' + r.status + ')');
+    } catch (e) {
+      alert('❌ Errore di rete: ' + e.message);
+    } finally {
+      btn.textContent = 'Testa link';
+      btn.disabled = false;
+    }
+    return;
+  }
+
   const s = { t, n: $('n').value || t, u, x: [], e: 1 };
   if (t === 'xtream') { s.a = $('us').value.trim(); s.p = $('pw').value.trim(); }
   if (t === 'stalker') s.m = $('m').value.trim().toUpperCase();

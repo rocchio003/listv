@@ -38,7 +38,7 @@ small{color:var(--m)}
 <h1>📺 IPTV Hub</h1>
 
 <div class="card type-m3u">
-  <small>Link unico per il player (contiene tutta la configurazione)</small>
+  <small>Link per il player</small>
   <input id="link" readonly onclick="this.select()">
   <small id="len"></small>
   <div class="row">
@@ -48,10 +48,10 @@ small{color:var(--m)}
 </div>
 
 <div class="sync-box">
-  <b>🔐 Sincronizzazione tra dispositivi</b>
-  <small style="display:block;margin:6px 0">Salva la tua chiave di accesso per recuperare i dati su qualsiasi dispositivo</small>
+  <b>🔐 Sincronizzazione e Link Breve</b>
+  <small style="display:block;margin:6px 0">Salva i dati nel cloud per ottenere un <b>link breve</b> e usarlo su più dispositivi.</small>
   <div class="row">
-    <input id="syncKey" placeholder="Inserisci la tua chiave di sincronizzazione" style="flex:1">
+    <input id="syncKey" placeholder="La tua chiave di sincronizzazione" style="flex:1">
     <button class="sync" onclick="loadFromCloud()">Carica</button>
     <button class="sync" onclick="saveToCloud()">Salva</button>
   </div>
@@ -87,8 +87,8 @@ small{color:var(--m)}
 
 <h2>Aggiungi sorgente EPG</h2>
 <div class="card type-epg">
-  <input id="epgN" placeholder="Nome (opzionale, es. EPG Italia)">
-  <input id="epgU" placeholder="URL XMLTV EPG (es. http://epg.provider.com/guide.xml)">
+  <input id="epgN" placeholder="Nome (opzionale)">
+  <input id="epgU" placeholder="URL XMLTV EPG">
   <div class="row">
     <button onclick="addEpg()">+ Aggiungi EPG</button>
     <button class="t" id="testEpgBtn" onclick="testEpg()">Testa EPG</button>
@@ -97,7 +97,7 @@ small{color:var(--m)}
 
 <h2>Modifica un link esistente</h2>
 <div class="card type-m3u">
-  <input id="imp" placeholder="Incolla qui un link già generato">
+  <input id="imp" placeholder="Incolla qui un link già generato (?c=... o ?k=...)">
   <button class="s" onclick="imp()">Carica configurazione</button>
 </div>
 
@@ -124,15 +124,36 @@ try {
 
 if (syncKey) $('syncKey').value = syncKey;
 
+// --- FUNZIONE AGGIORNATA PER GENERARE IL LINK BREVE ---
 async function upd() {
   try { localStorage.cfg = JSON.stringify(D); } catch {}
   const hasSources = D.s.length > 0 || D.g.length > 0;
-  const l = hasSources ? location.origin + '/playlist.m3u?c=' + (await enc(D)) : '';
+  
+  let l = '';
+  if (hasSources) {
+    // Se esiste una chiave di sincronizzazione, usa il link breve (?k=)
+    if (syncKey) {
+      l = location.origin + '/playlist.m3u?k=' + syncKey;
+    } else {
+      // Altrimenti fallback al link lungo incorporato (?c=)
+      l = location.origin + '/playlist.m3u?c=' + (await enc(D));
+    }
+  }
+  
   $('link').value = l;
   const info = [];
   if (D.s.length) info.push(`${D.s.length} liste`);
   if (D.g.length) info.push(`${D.g.length} EPG`);
-  $('len').textContent = l ? l.length + ' caratteri · ' + info.join(', ') + (l.length > 2000 ? ' ⚠️ link lungo' : '') : '';
+  
+  if (l) {
+    if (syncKey) {
+      $('len').textContent = '🔗 Link breve (sincronizzato) · ' + info.join(', ');
+    } else {
+      $('len').textContent = l.length + ' caratteri · ' + info.join(', ') + (l.length > 2000 ? ' ⚠️ link lungo: clicca "Salva" per accorciarlo' : '');
+    }
+  } else {
+    $('len').textContent = '';
+  }
 }
 
 function render() {
@@ -149,12 +170,12 @@ function render() {
   
   $('epgList').innerHTML = D.g.map((g, i) => `
     <div class="card type-epg">
-      ${g.n && g.n !== 'EPG' ? `<b>${esc(g.n)}</b> <small style="text-transform:uppercase;opacity:0.8">EPG</small>` : `<small style="text-transform:uppercase;opacity:0.8">EPG</small>`}
+      ${g.n ? `<b>${esc(g.n)}</b> <small style="text-transform:uppercase;opacity:0.8">EPG</small>` : `<small style="text-transform:uppercase;opacity:0.8">EPG</small>`}
       <div class="row">
         <label><input type="checkbox" ${g.e !== 0 ? 'checked' : ''} onchange="D.g[${i}].e=this.checked?1:0;upd()">attiva</label>
         <button class="s" onclick="delEpg(${i})">Elimina</button>
       </div>
-      <span class="epg-url" onclick="this.select()" title="Clicca per selezionare e copiare">${esc(g.u)}</span>
+      <span class="epg-url" onclick="navigator.clipboard.writeText('${esc(g.u)}');alert('URL copiato!')" title="Clicca per copiare">${esc(g.u)}</span>
     </div>`).join('') || '<small>Nessuna sorgente EPG ancora.</small>';
   
   upd();
@@ -162,13 +183,7 @@ function render() {
 
 async function groups(i) {
   const s = D.s[i], el = $('g' + i);
-
-  if (el.dataset.state === 'open') {
-    el.innerHTML = '';
-    el.dataset.state = 'closed';
-    return;
-  }
-
+  if (el.dataset.state === 'open') { el.innerHTML = ''; el.dataset.state = 'closed'; return; }
   if (el.dataset.state === 'loading') return;
 
   el.dataset.state = 'loading';
@@ -176,33 +191,23 @@ async function groups(i) {
 
   try {
     const r = await fetch(`/api/playlist?groups=${i}&c=${await enc(D)}`);
-    if (!r.ok) {
-      el.textContent = 'Errore: ' + (await r.text());
-      el.dataset.state = 'closed';
-      return;
-    }
+    if (!r.ok) { el.textContent = 'Errore: ' + (await r.text()); el.dataset.state = 'closed'; return; }
     
     const g = await r.json();
     s.x = s.x || [];
-
     let sourceLink = s.u;
-    if (s.t === 'xtream' && s.a && s.p) {
-      sourceLink = `${s.u.replace(/\/+$/, '')}/get.php?username=${encodeURIComponent(s.a)}&password=${encodeURIComponent(s.p)}&type=m3u_plus&output=ts`;
-    } else if (s.t === 'stalker' && s.m) {
-      sourceLink = `Portale: ${s.u} | MAC: ${s.m}`;
-    }
+    if (s.t === 'xtream' && s.a && s.p) sourceLink = `${s.u.replace(/\/+$/, '')}/get.php?username=${encodeURIComponent(s.a)}&password=${encodeURIComponent(s.p)}&type=m3u_plus&output=ts`;
+    else if (s.t === 'stalker' && s.m) sourceLink = `Portale: ${s.u} | MAC: ${s.m}`;
 
     el.innerHTML = `
       <div style="margin-bottom:8px">
         <small>Link sorgente completo:</small>
-        <input readonly value="${esc(sourceLink)}" onclick="this.select()" style="font-size:12px;width:100%;margin-top:4px;cursor:pointer;background:var(--b)" title="Clicca per selezionare e copiare">
+        <input readonly value="${esc(sourceLink)}" onclick="this.select()" style="font-size:12px;width:100%;margin-top:4px;cursor:pointer;background:var(--b)">
       </div>
       <div class="grp">
-        ${Object.entries(g).sort().map(([n, c]) =>
-          `<label><input type="checkbox" data-n="${esc(n)}" ${s.x.includes(n) ? '' : 'checked'} onchange="tg(${i},this)">${esc(n)} <small>(${c})</small></label>`
-        ).join('')}
+        ${Object.entries(g).sort().map(([n, c]) => `<label><input type="checkbox" data-n="${esc(n)}" ${s.x.includes(n) ? '' : 'checked'} onchange="tg(${i},this)">${esc(n)} <small>(${c})</small></label>`).join('')}
       </div>
-      <small style="display:block;margin-top:6px">Spunta = incluso. Il link principale in alto si aggiorna da solo.</small>
+      <small style="display:block;margin-top:6px">Spunta = incluso. Il link principale si aggiorna da solo.</small>
     `;
     el.dataset.state = 'open';
   } catch (e) {
@@ -218,114 +223,88 @@ function tg(i, e) {
   upd();
 }
 
-function del(i) {
-  if (confirm('Eliminare questa lista?')) { D.s.splice(i, 1); render(); }
-}
-
-function delEpg(i) {
-  if (confirm('Eliminare questa sorgente EPG?')) { D.g.splice(i, 1); render(); }
-}
+function del(i) { if (confirm('Eliminare questa lista?')) { D.s.splice(i, 1); render(); } }
+function delEpg(i) { if (confirm('Eliminare questa sorgente EPG?')) { D.g.splice(i, 1); render(); } }
 
 function ty() {
   const t = $('t').value;
   $('us').hidden = $('pw').hidden = t !== 'xtream';
   $('m').hidden = t !== 'stalker';
-  
-  const addCard = $('t').closest('.card');
-  addCard.className = `card type-${t}`;
-  
-  if (t === 'm3u') $('u').placeholder = 'URL lista M3U';
-  else if (t === 'xtream') $('u').placeholder = 'Server (http://host:porta)';
-  else if (t === 'stalker') $('u').placeholder = 'Portale (http://host/c/)';
+  $('t').closest('.card').className = `card type-${t}`;
+  $('u').placeholder = t === 'm3u' ? 'URL lista M3U' : t === 'xtream' ? 'Server (http://host:porta)' : 'Portale (http://host/c/)';
 }
 
 async function testLink() {
-  const t = $('t').value;
-  const u = $('u').value.trim();
+  const t = $('t').value, u = $('u').value.trim();
   if (!u) return alert('Inserisci l\'URL per poterlo testare');
-  
   const s = { t, n: $('n').value || t, u, x: [], e: 1 };
   if (t === 'xtream') { s.a = $('us').value.trim(); s.p = $('pw').value.trim(); }
   if (t === 'stalker') s.m = $('m').value.trim().toUpperCase();
   
-  const tempCfg = { s: [s], g: [] };
   const btn = $('testBtn');
-  const originalText = btn.textContent;
-  btn.textContent = 'Test in corso...';
-  btn.disabled = true;
-  
+  btn.textContent = 'Test in corso...'; btn.disabled = true;
   try {
-    const c = await enc(tempCfg);
+    const c = await enc({ s: [s], g: [] });
     const r = await fetch(`/api/playlist?groups=0&c=${c}`);
-    if (!r.ok) {
-      alert('❌ Errore nel test: ' + (await r.text()));
-    } else {
-      const g = await r.json();
-      alert(`✅ Link valido! Trovati ${Object.keys(g).length} gruppi.`);
-    }
-  } catch (e) {
-    alert('❌ Errore di rete o configurazione non valida: ' + e.message);
-  } finally {
-    btn.textContent = originalText;
-    btn.disabled = false;
-  }
+    if (!r.ok) alert('❌ Errore: ' + (await r.text()));
+    else alert(`✅ Link valido! Trovati ${Object.keys(await r.json()).length} gruppi.`);
+  } catch (e) { alert('❌ Errore: ' + e.message); }
+  finally { btn.textContent = 'Testa link'; btn.disabled = false; }
 }
 
 async function testEpg() {
   const u = $('epgU').value.trim();
-  if (!u) return alert('Inserisci l\'URL EPG per poterlo testare');
-  
+  if (!u) return alert('Inserisci l\'URL EPG');
   const btn = $('testEpgBtn');
-  btn.textContent = 'Test in corso...';
-  btn.disabled = true;
-  
+  btn.textContent = 'Test in corso...'; btn.disabled = true;
   try {
     const r = await fetch(u, { method: 'HEAD' });
     if (r.ok) alert('✅ URL EPG raggiungibile!');
     else alert('⚠️ URL EPG non raggiungibile (HTTP ' + r.status + ')');
-  } catch (e) {
-    alert('❌ Errore di rete: ' + e.message);
-  } finally {
-    btn.textContent = 'Testa EPG';
-    btn.disabled = false;
-  }
+  } catch (e) { alert('❌ Errore di rete: ' + e.message); }
+  finally { btn.textContent = 'Testa EPG'; btn.disabled = false; }
 }
 
 function add() {
-  const t = $('t').value;
-  const u = $('u').value.trim();
+  const t = $('t').value, u = $('u').value.trim();
   if (!u) return alert('Inserisci l\'URL');
-  
   const s = { t, n: $('n').value || t, u, x: [], e: 1 };
   if (t === 'xtream') { s.a = $('us').value.trim(); s.p = $('pw').value.trim(); }
   if (t === 'stalker') s.m = $('m').value.trim().toUpperCase();
-  
   D.s.push(s);
-  ['n', 'u', 'us', 'pw', 'm'].forEach((x) => ($(x).value = ''));
+  ['n', 'u', 'us', 'pw', 'm'].forEach(x => $(x).value = '');
   render();
 }
 
 function addEpg() {
-  const n = $('epgN').value.trim();
-  const u = $('epgU').value.trim();
+  const n = $('epgN').value.trim(), u = $('epgU').value.trim();
   if (!u) return alert('Inserisci l\'URL EPG');
-  
-  D.g.push({ n: n || '', u, e: 1 });
-  $('epgN').value = '';
-  $('epgU').value = '';
+  D.g.push({ n, u, e: 1 });
+  $('epgN').value = ''; $('epgU').value = '';
   render();
 }
 
 async function imp() {
   try {
-    const decoded = await dec(new URL($('imp').value.trim()).searchParams.get('c'));
-    D.s = decoded.s || [];
-    D.g = decoded.g || [];
+    const url = new URL($('imp').value.trim());
+    if (url.searchParams.has('k')) {
+      // Se è un link con chiave, la impostiamo e carichiamo dal cloud
+      syncKey = url.searchParams.get('k');
+      $('syncKey').value = syncKey;
+      localStorage.syncKey = syncKey;
+      await loadFromCloud();
+    } else {
+      // Altrimenti decodifichiamo il link vecchio
+      const decoded = await dec(url.searchParams.get('c'));
+      D.s = decoded.s || [];
+      D.g = decoded.g || [];
+      render();
+    }
     $('imp').value = '';
-    render();
   } catch { alert('Link non valido'); }
 }
 
+// ---- Sincronizzazione Cloud ----
 function generateKey() {
   const array = new Uint8Array(16);
   crypto.getRandomValues(array);
@@ -333,19 +312,15 @@ function generateKey() {
   $('syncKey').value = key;
   syncKey = key;
   localStorage.syncKey = key;
-  showStatus('✅ Nuova chiave generata: ' + key, 'success');
+  showStatus('✅ Nuova chiave generata. Clicca "Salva" per attivare il link breve.', 'success');
 }
 
 async function saveToCloud() {
   const key = $('syncKey').value.trim();
-  if (!key) {
-    alert('Genera o inserisci prima una chiave di sincronizzazione');
-    return;
-  }
+  if (!key) return alert('Genera o inserisci prima una chiave di sincronizzazione');
   
   syncKey = key;
   localStorage.syncKey = key;
-  
   showStatus('⏳ Salvataggio in corso...', 'loading');
   
   try {
@@ -354,9 +329,9 @@ async function saveToCloud() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ k: key, cfg: D })
     });
-    
     if (r.ok) {
-      showStatus('✅ Dati salvati nel cloud! Usa la chiave "' + key + '" su altri dispositivi.', 'success');
+      showStatus('✅ Dati salvati! Il link in alto è ora breve.', 'success');
+      upd(); // Aggiorna immediatamente il link per usare ?k=
     } else {
       showStatus('❌ Errore: ' + (await r.text()), 'error');
     }
@@ -367,24 +342,19 @@ async function saveToCloud() {
 
 async function loadFromCloud() {
   const key = $('syncKey').value.trim();
-  if (!key) {
-    alert('Inserisci la chiave di sincronizzazione');
-    return;
-  }
+  if (!key) return alert('Inserisci la chiave di sincronizzazione');
   
   showStatus('⏳ Caricamento in corso...', 'loading');
-  
   try {
     const r = await fetch('/api/sync?k=' + encodeURIComponent(key));
-    
     if (r.ok) {
       const data = await r.json();
       D.s = data.s || [];
       D.g = data.g || [];
       syncKey = key;
       localStorage.syncKey = key;
-      render();
-      showStatus('✅ Dati caricati dal cloud! (' + D.s.length + ' liste, ' + D.g.length + ' EPG)', 'success');
+      render(); // render() chiama automaticamente upd()
+      showStatus('✅ Dati caricati! (' + D.s.length + ' liste, ' + D.g.length + ' EPG)', 'success');
     } else {
       showStatus('❌ Errore: ' + (await r.text()), 'error');
     }

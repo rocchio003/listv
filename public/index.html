@@ -22,11 +22,14 @@ input,select,button{font:inherit;color:inherit;background:transparent;border:1px
 button{width:auto;cursor:pointer;background:var(--a);border:0;color:#fff;margin-right:6px}
 button.s{background:#8883;color:var(--t)}
 button.t{background:#2a9d8f;color:#fff}
+button.sync{background:#f4a261;color:#fff}
 .row{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:6px}
 .row label{display:flex;align-items:center;gap:6px;margin-right:8px}.row input{width:auto}
 small{color:var(--m)}
 .grp{max-height:260px;overflow:auto;margin-top:6px;color:var(--t)}
 .grp label{display:flex;gap:8px;align-items:center;padding:5px 0}.grp input{width:auto;margin:0}
+.sync-box{background:var(--b);border-radius:8px;padding:10px;margin:10px 0}
+.sync-status{font-size:12px;margin-top:6px;opacity:0.8}
 </style>
 </head>
 <body>
@@ -40,6 +43,20 @@ small{color:var(--m)}
     <button onclick="navigator.clipboard.writeText($('link').value);this.textContent='Copiato ✓'">Copia link</button>
     <button class="s" onclick="$('link').value&&window.open($('link').value)">Apri / testa</button>
   </div>
+</div>
+
+<div class="sync-box">
+  <b>🔐 Sincronizzazione tra dispositivi</b>
+  <small style="display:block;margin:6px 0">Salva la tua chiave di accesso per recuperare i dati su qualsiasi dispositivo</small>
+  <div class="row">
+    <input id="syncKey" placeholder="Inserisci la tua chiave di sincronizzazione" style="flex:1">
+    <button class="sync" onclick="loadFromCloud()">Carica</button>
+    <button class="sync" onclick="saveToCloud()">Salva</button>
+  </div>
+  <div class="row">
+    <button class="s" onclick="generateKey()">Genera nuova chiave</button>
+  </div>
+  <div class="sync-status" id="syncStatus"></div>
 </div>
 
 <h2>Liste canali</h2>
@@ -93,6 +110,9 @@ const dec = async (t) =>
   JSON.parse(await new Response(new Blob([b64d(t)]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text());
 
 let D = { s: [], g: [] };
+let syncKey = localStorage.syncKey || '';
+
+// Carica dati dal localStorage all'avvio
 try { 
   const saved = JSON.parse(localStorage.cfg);
   if (saved) {
@@ -100,6 +120,8 @@ try {
     D.g = saved.g || [];
   }
 } catch {}
+
+if (syncKey) $('syncKey').value = syncKey;
 
 async function upd() {
   try { localStorage.cfg = JSON.stringify(D); } catch {}
@@ -219,7 +241,7 @@ function ty() {
 async function testLink() {
   const t = $('t').value;
   const u = $('u').value.trim();
-  if (!u) return alert('Inserisci l'URL per poterlo testare');
+  if (!u) return alert('Inserisci l\'URL per poterlo testare');
   
   const s = { t, n: $('n').value || t, u, x: [], e: 1 };
   if (t === 'xtream') { s.a = $('us').value.trim(); s.p = $('pw').value.trim(); }
@@ -250,7 +272,7 @@ async function testLink() {
 
 async function testEpg() {
   const u = $('epgU').value.trim();
-  if (!u) return alert('Inserisci l'URL EPG per poterlo testare');
+  if (!u) return alert('Inserisci l\'URL EPG per poterlo testare');
   
   const btn = $('testEpgBtn');
   btn.textContent = 'Test in corso...';
@@ -271,7 +293,7 @@ async function testEpg() {
 function add() {
   const t = $('t').value;
   const u = $('u').value.trim();
-  if (!u) return alert('Inserisci l'URL');
+  if (!u) return alert('Inserisci l\'URL');
   
   const s = { t, n: $('n').value || t, u, x: [], e: 1 };
   if (t === 'xtream') { s.a = $('us').value.trim(); s.p = $('pw').value.trim(); }
@@ -285,7 +307,7 @@ function add() {
 function addEpg() {
   const n = $('epgN').value.trim();
   const u = $('epgU').value.trim();
-  if (!u) return alert('Inserisci l'URL EPG');
+  if (!u) return alert('Inserisci l\'URL EPG');
   
   D.g.push({ n: n || 'EPG', u, e: 1 });
   $('epgN').value = '';
@@ -301,6 +323,80 @@ async function imp() {
     $('imp').value = '';
     render();
   } catch { alert('Link non valido'); }
+}
+
+// ---- Sincronizzazione Cloud ----
+function generateKey() {
+  const array = new Uint8Array(16);
+  crypto.getRandomValues(array);
+  const key = Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+  $('syncKey').value = key;
+  syncKey = key;
+  localStorage.syncKey = key;
+  showStatus('✅ Nuova chiave generata: ' + key, 'success');
+}
+
+async function saveToCloud() {
+  const key = $('syncKey').value.trim();
+  if (!key) {
+    alert('Genera o inserisci prima una chiave di sincronizzazione');
+    return;
+  }
+  
+  syncKey = key;
+  localStorage.syncKey = key;
+  
+  showStatus('⏳ Salvataggio in corso...', 'loading');
+  
+  try {
+    const r = await fetch('/api/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ k: key, cfg: D })
+    });
+    
+    if (r.ok) {
+      showStatus('✅ Dati salvati nel cloud! Usa la chiave "' + key + '" su altri dispositivi.', 'success');
+    } else {
+      showStatus('❌ Errore: ' + (await r.text()), 'error');
+    }
+  } catch (e) {
+    showStatus('❌ Errore di rete: ' + e.message, 'error');
+  }
+}
+
+async function loadFromCloud() {
+  const key = $('syncKey').value.trim();
+  if (!key) {
+    alert('Inserisci la chiave di sincronizzazione');
+    return;
+  }
+  
+  showStatus('⏳ Caricamento in corso...', 'loading');
+  
+  try {
+    const r = await fetch('/api/sync?k=' + encodeURIComponent(key));
+    
+    if (r.ok) {
+      const data = await r.json();
+      D.s = data.s || [];
+      D.g = data.g || [];
+      syncKey = key;
+      localStorage.syncKey = key;
+      render();
+      showStatus('✅ Dati caricati dal cloud! (' + D.s.length + ' liste, ' + D.g.length + ' EPG)', 'success');
+    } else {
+      showStatus('❌ Errore: ' + (await r.text()), 'error');
+    }
+  } catch (e) {
+    showStatus('❌ Errore di rete: ' + e.message, 'error');
+  }
+}
+
+function showStatus(msg, type) {
+  const el = $('syncStatus');
+  el.textContent = msg;
+  el.style.color = type === 'success' ? '#2a9d8f' : type === 'error' ? '#e76f51' : 'var(--m)';
 }
 
 ty();

@@ -30,6 +30,8 @@ small{color:var(--m)}
 .grp label{display:flex;gap:8px;align-items:center;padding:5px 0}.grp input{width:auto;margin:0}
 .sync-box{background:var(--b);border-radius:8px;padding:10px;margin:10px 0}
 .sync-status{font-size:12px;margin-top:6px;opacity:0.8}
+.epg-url{display:block;margin-top:6px;word-break:break-all;font-size:13px;color:var(--m);cursor:pointer;padding:4px;border-radius:4px;background:var(--b)}
+.epg-url:hover{color:var(--t)}
 </style>
 </head>
 <body>
@@ -85,7 +87,7 @@ small{color:var(--m)}
 
 <h2>Aggiungi sorgente EPG</h2>
 <div class="card type-epg">
-  <input id="epgN" placeholder="Nome (es. EPG Italia)">
+  <input id="epgN" placeholder="Nome (opzionale, es. EPG Italia)">
   <input id="epgU" placeholder="URL XMLTV EPG (es. http://epg.provider.com/guide.xml)">
   <div class="row">
     <button onclick="addEpg()">+ Aggiungi EPG</button>
@@ -112,7 +114,6 @@ const dec = async (t) =>
 let D = { s: [], g: [] };
 let syncKey = localStorage.syncKey || '';
 
-// Carica dati dal localStorage all'avvio
 try { 
   const saved = JSON.parse(localStorage.cfg);
   if (saved) {
@@ -148,12 +149,12 @@ function render() {
   
   $('epgList').innerHTML = D.g.map((g, i) => `
     <div class="card type-epg">
-      <b>${esc(g.n)}</b> <small style="text-transform:uppercase;opacity:0.8">EPG</small>
+      ${g.n && g.n !== 'EPG' ? `<b>${esc(g.n)}</b> <small style="text-transform:uppercase;opacity:0.8">EPG</small>` : `<small style="text-transform:uppercase;opacity:0.8">EPG</small>`}
       <div class="row">
         <label><input type="checkbox" ${g.e !== 0 ? 'checked' : ''} onchange="D.g[${i}].e=this.checked?1:0;upd()">attiva</label>
         <button class="s" onclick="delEpg(${i})">Elimina</button>
       </div>
-      <small style="display:block;margin-top:6px;word-break:break-all">${esc(g.u)}</small>
+      <span class="epg-url" onclick="this.select()" title="Clicca per selezionare e copiare">${esc(g.u)}</span>
     </div>`).join('') || '<small>Nessuna sorgente EPG ancora.</small>';
   
   upd();
@@ -309,7 +310,7 @@ function addEpg() {
   const u = $('epgU').value.trim();
   if (!u) return alert('Inserisci l\'URL EPG');
   
-  D.g.push({ n: n || 'EPG', u, e: 1 });
+  D.g.push({ n: n || '', u, e: 1 });
   $('epgN').value = '';
   $('epgU').value = '';
   render();
@@ -325,7 +326,6 @@ async function imp() {
   } catch { alert('Link non valido'); }
 }
 
-// ---- Sincronizzazione Cloud ----
 function generateKey() {
   const array = new Uint8Array(16);
   crypto.getRandomValues(array);

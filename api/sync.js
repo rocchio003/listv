@@ -18,18 +18,48 @@ function parseBody(req) {
   });
 }
 
+// Funzione per leggere/scrivere configurazione per una chiave specifica
+async function getUserCfg(key) {
+  const DB_URL = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
+  const DB_TOK = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
+  const DB_KEY = `iptvhub:user:${key}`; // Ogni utente ha la sua chiave
+  
+  if (!DB_URL || !DB_TOK) throw new Error('Database Redis non configurato');
+  
+  const r = await fetch(`${DB_URL}/get/${DB_KEY}`, { 
+    headers: { Authorization: 'Bearer ' + DB_TOK } 
+  });
+  const j = await r.json();
+  return j.result ? JSON.parse(j.result) : null;
+}
+
+async function saveUserCfg(key, cfg) {
+  const DB_URL = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
+  const DB_TOK = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
+  const DB_KEY = `iptvhub:user:${key}`;
+  
+  if (!DB_URL || !DB_TOK) throw new Error('Database Redis non configurato');
+  
+  const r = await fetch(DB_URL, { 
+    method: 'POST', 
+    headers: { Authorization: 'Bearer ' + DB_TOK }, 
+    body: JSON.stringify(['SET', DB_KEY, JSON.stringify(cfg)]) 
+  });
+  if (!r.ok) throw new Error('Salvataggio fallito');
+}
+
 export default async function handler(req, res) {
   const q = new URL(req.url, `https://${req.headers.host}`).searchParams;
   
-  // GET: Carica configurazione con chiave
+  // GET: Carica configurazione per questa chiave
   if (req.method === 'GET') {
     const key = q.get('k');
     if (!key) return res.status(400).send('Chiave mancante');
     
     try {
-      const cfg = await loadCfg();
-      if (!cfg.k || cfg.k !== key) {
-        return res.status(404).send('Chiave non valida');
+      const cfg = await getUserCfg(key);
+      if (!cfg) {
+        return res.status(404).send('Nessuna configurazione trovata per questa chiave');
       }
       return res.json({ s: cfg.s || [], g: cfg.g || [] });
     } catch (e) {
@@ -37,7 +67,7 @@ export default async function handler(req, res) {
     }
   }
   
-  // POST: Salva configurazione con chiave
+  // POST: Salva configurazione per questa chiave
   if (req.method === 'POST') {
     try {
       const body = await parseBody(req);
@@ -48,26 +78,23 @@ export default async function handler(req, res) {
         return res.status(400).send('Dati mancanti');
       }
       
-      // Carica configurazione esistente o crea nuova
-      let dbCfg;
+      // Carica configurazione esistente per questa chiave (o crea nuova)
+      let existingCfg;
       try {
-        dbCfg = await loadCfg();
+        existingCfg = await getUserCfg(key);
       } catch {
-        dbCfg = { s: [], g: [] };
+        existingCfg = null;
       }
       
-      // Se la chiave non esiste ancora, la impostiamo
-      if (!dbCfg.k) {
-        dbCfg.k = key;
-      } else if (dbCfg.k !== key) {
-        return res.status(403).send('Chiave non corrispondente');
-      }
+      // Prepara la configurazione da salvare
+      const cfgToSave = {
+        k: key,
+        s: cfg.s || [],
+        g: cfg.g || [],
+        updatedAt: new Date().toISOString()
+      };
       
-      // Aggiorna dati
-      dbCfg.s = cfg.s || [];
-      dbCfg.g = cfg.g || [];
-      
-      await saveCfg(dbCfg);
+      await saveUserCfg(key, cfgToSave);
       return res.json({ success: true });
     } catch (e) {
       return res.status(500).send('Errore salvataggio: ' + e.message);

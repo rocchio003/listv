@@ -2,6 +2,22 @@ import { loadCfg, saveCfg } from './_lib.js';
 
 export const config = { maxDuration: 30 };
 
+// Helper per parsare il body JSON in Node.js
+function parseBody(req) {
+  return new Promise((resolve, reject) => {
+    let body = '';
+    req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', () => {
+      try {
+        resolve(body ? JSON.parse(body) : {});
+      } catch (e) {
+        reject(e);
+      }
+    });
+    req.on('error', reject);
+  });
+}
+
 export default async function handler(req, res) {
   const q = new URL(req.url, `https://${req.headers.host}`).searchParams;
   
@@ -24,7 +40,7 @@ export default async function handler(req, res) {
   // POST: Salva configurazione con chiave
   if (req.method === 'POST') {
     try {
-      const body = await req.json();
+      const body = await parseBody(req);
       const key = body.k;
       const cfg = body.cfg;
       

@@ -14,11 +14,11 @@ h1{font-size:20px;margin:6px 0 12px}h2{font-size:16px;margin:20px 0 8px}
 input,select,button{font:inherit;color:inherit;background:transparent;border:1px solid #8884;border-radius:8px;padding:9px 10px;margin:3px 0;width:100%}
 button{width:auto;cursor:pointer;background:var(--a);border:0;color:#fff;margin-right:6px}
 button.s{background:#8883;color:var(--t)}
-button.t{background:#2a9d8f;color:#fff} /* Stile per il pulsante di test */
+button.t{background:#2a9d8f;color:#fff}
 .row{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:6px}
 .row label{display:flex;align-items:center;gap:6px;margin-right:8px}.row input{width:auto}
 small{color:var(--m)}
-.grp{max-height:260px;overflow:auto;margin-top:6px;color:var(--t)} /* Colore esplicito per leggibilità */
+.grp{max-height:260px;overflow:auto;margin-top:6px;color:var(--t)}
 .grp label{display:flex;gap:8px;align-items:center;padding:5px 0}.grp input{width:auto;margin:0}
 </style>
 </head>
@@ -91,23 +91,63 @@ function render() {
         <button class="s" onclick="groups(${i})">Gruppi</button>
         <button class="s" onclick="del(${i})">Elimina</button>
       </div>
-      <div id="g${i}"></div>
+      <div id="g${i}" data-state="closed"></div>
     </div>`).join('') || '<small>Nessuna lista ancora.</small>';
   upd();
 }
 
 async function groups(i) {
   const s = D.s[i], el = $('g' + i);
+
+  // 1. Se è già aperto, lo chiudiamo
+  if (el.dataset.state === 'open') {
+    el.innerHTML = '';
+    el.dataset.state = 'closed';
+    return;
+  }
+
+  // 2. Evitiamo doppi click durante il caricamento
+  if (el.dataset.state === 'loading') return;
+
+  el.dataset.state = 'loading';
   el.textContent = 'Carico i gruppi…';
-  const r = await fetch(`/api/playlist?groups=${i}&c=${await enc(D)}`);
-  if (!r.ok) { el.textContent = 'Errore: ' + (await r.text()); return; }
-  const g = await r.json();
-  s.x = s.x || [];
-  // Rimosso il campo di ricerca come richiesto
-  el.innerHTML = '<div class="grp">' +
-    Object.entries(g).sort().map(([n, c]) =>
-      `<label><input type="checkbox" data-n="${esc(n)}" ${s.x.includes(n) ? '' : 'checked'} onchange="tg(${i},this)">${esc(n)} <small>(${c})</small></label>`
-    ).join('') + '</div><small>Spunta = incluso. Il link si aggiorna da solo.</small>';
+
+  try {
+    const r = await fetch(`/api/playlist?groups=${i}&c=${await enc(D)}`);
+    if (!r.ok) {
+      el.textContent = 'Errore: ' + (await r.text());
+      el.dataset.state = 'closed';
+      return;
+    }
+    
+    const g = await r.json();
+    s.x = s.x || [];
+
+    // Costruiamo il link sorgente completo da mostrare
+    let sourceLink = s.u;
+    if (s.t === 'xtream' && s.a && s.p) {
+      sourceLink = `${s.u.replace(/\/+$/, '')}/get.php?username=${encodeURIComponent(s.a)}&password=${encodeURIComponent(s.p)}&type=m3u_plus&output=ts`;
+    } else if (s.t === 'stalker' && s.m) {
+      sourceLink = `Portale: ${s.u} | MAC: ${s.m}`;
+    }
+
+    el.innerHTML = `
+      <div style="margin-bottom:8px">
+        <small>Link sorgente completo:</small>
+        <input readonly value="${esc(sourceLink)}" onclick="this.select()" style="font-size:12px;width:100%;margin-top:4px;cursor:pointer;background:var(--b)" title="Clicca per selezionare e copiare">
+      </div>
+      <div class="grp">
+        ${Object.entries(g).sort().map(([n, c]) =>
+          `<label><input type="checkbox" data-n="${esc(n)}" ${s.x.includes(n) ? '' : 'checked'} onchange="tg(${i},this)">${esc(n)} <small>(${c})</small></label>`
+        ).join('')}
+      </div>
+      <small style="display:block;margin-top:6px">Spunta = incluso. Il link principale in alto si aggiorna da solo.</small>
+    `;
+    el.dataset.state = 'open';
+  } catch (e) {
+    el.textContent = 'Errore di rete: ' + e.message;
+    el.dataset.state = 'closed';
+  }
 }
 
 function tg(i, e) {
@@ -128,7 +168,6 @@ function ty() {
   $('u').placeholder = t === 'm3u' ? 'URL lista M3U' : t === 'xtream' ? 'Server (http://host:porta)' : 'Portale (http://host/c/)';
 }
 
-// Nuova funzione per testare il link prima di aggiungerlo
 async function testLink() {
   const t = $('t').value;
   const u = $('u').value.trim();
@@ -148,12 +187,10 @@ async function testLink() {
     const c = await enc(tempCfg);
     const r = await fetch(`/api/playlist?groups=0&c=${c}`);
     if (!r.ok) {
-      const errText = await r.text();
-      alert('❌ Errore nel test: ' + errText);
+      alert('❌ Errore nel test: ' + (await r.text()));
     } else {
       const g = await r.json();
-      const groupCount = Object.keys(g).length;
-      alert(`✅ Link valido! Trovati ${groupCount} gruppi.`);
+      alert(`✅ Link valido! Trovati ${Object.keys(g).length} gruppi.`);
     }
   } catch (e) {
     alert('❌ Errore di rete o configurazione non valida: ' + e.message);

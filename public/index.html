@@ -12,7 +12,6 @@ body{margin:0 auto;max-width:720px;padding:14px;font:15px system-ui,sans-serif;b
 h1{font-size:20px;margin:6px 0 12px}h2{font-size:16px;margin:20px 0 8px}
 
 .card{background:var(--c);border-radius:12px;padding:12px;margin:10px 0;border-left:4px solid transparent;transition:background 0.2s, border-color 0.2s}
-
 .card.type-m3u{border-left-color:#4f8cff;background:color-mix(in srgb, var(--c) 94%, #4f8cff)}
 .card.type-xtream{border-left-color:#2a9d8f;background:color-mix(in srgb, var(--c) 94%, #2a9d8f)}
 .card.type-stalker{border-left-color:#e76f51;background:color-mix(in srgb, var(--c) 94%, #e76f51)}
@@ -32,6 +31,9 @@ small{color:var(--m)}
 .sync-status{font-size:12px;margin-top:6px;opacity:0.8}
 .epg-url{display:block;margin-top:6px;word-break:break-all;font-size:13px;color:var(--m);cursor:pointer;padding:4px;border-radius:4px;background:var(--b)}
 .epg-url:hover{color:var(--t)}
+.grp-actions{display:flex;gap:10px;font-size:12px;margin:6px 0}
+.grp-actions a{color:var(--a);cursor:pointer;text-decoration:none}
+.grp-actions a:hover{text-decoration:underline}
 </style>
 </head>
 <body>
@@ -116,44 +118,27 @@ let syncKey = localStorage.syncKey || '';
 
 try { 
   const saved = JSON.parse(localStorage.cfg);
-  if (saved) {
-    D.s = saved.s || [];
-    D.g = saved.g || [];
-  }
+  if (saved) { D.s = saved.s || []; D.g = saved.g || []; }
 } catch {}
 
 if (syncKey) $('syncKey').value = syncKey;
 
-// --- FUNZIONE AGGIORNATA PER GENERARE IL LINK BREVE ---
 async function upd() {
   try { localStorage.cfg = JSON.stringify(D); } catch {}
   const hasSources = D.s.length > 0 || D.g.length > 0;
-  
   let l = '';
   if (hasSources) {
-    // Se esiste una chiave di sincronizzazione, usa il link breve (?k=)
-    if (syncKey) {
-      l = location.origin + '/playlist.m3u?k=' + syncKey;
-    } else {
-      // Altrimenti fallback al link lungo incorporato (?c=)
-      l = location.origin + '/playlist.m3u?c=' + (await enc(D));
-    }
+    if (syncKey) l = location.origin + '/playlist.m3u?k=' + syncKey;
+    else l = location.origin + '/playlist.m3u?c=' + (await enc(D));
   }
-  
   $('link').value = l;
   const info = [];
   if (D.s.length) info.push(`${D.s.length} liste`);
   if (D.g.length) info.push(`${D.g.length} EPG`);
-  
   if (l) {
-    if (syncKey) {
-      $('len').textContent = '🔗 Link breve (sincronizzato) · ' + info.join(', ');
-    } else {
-      $('len').textContent = l.length + ' caratteri · ' + info.join(', ') + (l.length > 2000 ? ' ⚠️ link lungo: clicca "Salva" per accorciarlo' : '');
-    }
-  } else {
-    $('len').textContent = '';
-  }
+    if (syncKey) $('len').textContent = '🔗 Link breve (sincronizzato) · ' + info.join(', ');
+    else $('len').textContent = l.length + ' caratteri · ' + info.join(', ') + (l.length > 2000 ? ' ⚠️ link lungo: clicca "Salva" per accorciarlo' : '');
+  } else $('len').textContent = '';
 }
 
 function render() {
@@ -199,13 +184,20 @@ async function groups(i) {
     if (s.t === 'xtream' && s.a && s.p) sourceLink = `${s.u.replace(/\/+$/, '')}/get.php?username=${encodeURIComponent(s.a)}&password=${encodeURIComponent(s.p)}&type=m3u_plus&output=ts`;
     else if (s.t === 'stalker' && s.m) sourceLink = `Portale: ${s.u} | MAC: ${s.m}`;
 
+    const groupNames = Object.keys(g).sort();
+    
     el.innerHTML = `
       <div style="margin-bottom:8px">
         <small>Link sorgente completo:</small>
         <input readonly value="${esc(sourceLink)}" onclick="this.select()" style="font-size:12px;width:100%;margin-top:4px;cursor:pointer;background:var(--b)">
       </div>
-      <div class="grp">
-        ${Object.entries(g).sort().map(([n, c]) => `<label><input type="checkbox" data-n="${esc(n)}" ${s.x.includes(n) ? '' : 'checked'} onchange="tg(${i},this)">${esc(n)} <small>(${c})</small></label>`).join('')}
+      <div class="grp-actions">
+        <a onclick="selectAll(${i})">✓ Seleziona tutti</a>
+        <span>·</span>
+        <a onclick="deselectAll(${i})">✗ Deseleziona tutti</a>
+      </div>
+      <div class="grp" id="grpList${i}">
+        ${groupNames.map(n => `<label><input type="checkbox" data-n="${esc(n)}" ${s.x.includes(n) ? '' : 'checked'} onchange="tg(${i},this)">${esc(n)} <small>(${g[n]})</small></label>`).join('')}
       </div>
       <small style="display:block;margin-top:6px">Spunta = incluso. Il link principale si aggiorna da solo.</small>
     `;
@@ -214,6 +206,25 @@ async function groups(i) {
     el.textContent = 'Errore di rete: ' + e.message;
     el.dataset.state = 'closed';
   }
+}
+
+// Seleziona tutti i gruppi (nessuno escluso)
+function selectAll(i) {
+  const s = D.s[i];
+  s.x = [];
+  const el = $('grpList' + i);
+  if (el) el.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = true);
+  upd();
+}
+
+// Deseleziona tutti i gruppi (tutti esclusi)
+function deselectAll(i) {
+  const s = D.s[i];
+  const el = $('grpList' + i);
+  if (el) {
+    s.x = Array.from(el.querySelectorAll('input[type="checkbox"]')).map(cb => { cb.checked = false; return cb.dataset.n; });
+  }
+  upd();
 }
 
 function tg(i, e) {
@@ -240,7 +251,6 @@ async function testLink() {
   const s = { t, n: $('n').value || t, u, x: [], e: 1 };
   if (t === 'xtream') { s.a = $('us').value.trim(); s.p = $('pw').value.trim(); }
   if (t === 'stalker') s.m = $('m').value.trim().toUpperCase();
-  
   const btn = $('testBtn');
   btn.textContent = 'Test in corso...'; btn.disabled = true;
   try {
@@ -288,13 +298,11 @@ async function imp() {
   try {
     const url = new URL($('imp').value.trim());
     if (url.searchParams.has('k')) {
-      // Se è un link con chiave, la impostiamo e carichiamo dal cloud
       syncKey = url.searchParams.get('k');
       $('syncKey').value = syncKey;
       localStorage.syncKey = syncKey;
       await loadFromCloud();
     } else {
-      // Altrimenti decodifichiamo il link vecchio
       const decoded = await dec(url.searchParams.get('c'));
       D.s = decoded.s || [];
       D.g = decoded.g || [];
@@ -304,7 +312,6 @@ async function imp() {
   } catch { alert('Link non valido'); }
 }
 
-// ---- Sincronizzazione Cloud ----
 function generateKey() {
   const array = new Uint8Array(16);
   crypto.getRandomValues(array);
@@ -318,11 +325,9 @@ function generateKey() {
 async function saveToCloud() {
   const key = $('syncKey').value.trim();
   if (!key) return alert('Genera o inserisci prima una chiave di sincronizzazione');
-  
   syncKey = key;
   localStorage.syncKey = key;
   showStatus('⏳ Salvataggio in corso...', 'loading');
-  
   try {
     const r = await fetch('/api/sync', {
       method: 'POST',
@@ -331,7 +336,7 @@ async function saveToCloud() {
     });
     if (r.ok) {
       showStatus('✅ Dati salvati! Il link in alto è ora breve.', 'success');
-      upd(); // Aggiorna immediatamente il link per usare ?k=
+      upd();
     } else {
       showStatus('❌ Errore: ' + (await r.text()), 'error');
     }
@@ -343,8 +348,7 @@ async function saveToCloud() {
 async function loadFromCloud() {
   const key = $('syncKey').value.trim();
   if (!key) return alert('Inserisci la chiave di sincronizzazione');
-  
-  showStatus('⏳ Caricamento in corso...', 'loading');
+  showStatus(' Caricamento in corso...', 'loading');
   try {
     const r = await fetch('/api/sync?k=' + encodeURIComponent(key));
     if (r.ok) {
@@ -353,7 +357,7 @@ async function loadFromCloud() {
       D.g = data.g || [];
       syncKey = key;
       localStorage.syncKey = key;
-      render(); // render() chiama automaticamente upd()
+      render();
       showStatus('✅ Dati caricati! (' + D.s.length + ' liste, ' + D.g.length + ' EPG)', 'success');
     } else {
       showStatus('❌ Errore: ' + (await r.text()), 'error');

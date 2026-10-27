@@ -146,10 +146,12 @@ function render() {
     <div class="card type-${s.t || 'm3u'}">
       <b>${esc(s.n)}</b> <small style="text-transform:uppercase;opacity:0.8">${s.t}</small> <small>${(s.x || []).length ? ' · ' + s.x.length + ' gruppi esclusi' : ''}</small>
       <div class="row">
-        <label><input type="checkbox" ${s.e !== 0 ? 'checked' : ''} onchange="D.s[${i}].e=this.checked?1:0;upd()">attiva</label>
-        <button class="s" onclick="groups(${i})">Gruppi</button>
-        <button class="s" onclick="del(${i})">Elimina</button>
-      </div>
+  <label><input type="checkbox" ${s.e !== 0 ? 'checked' : ''} onchange="D.s[${i}].e=this.checked?1:0;upd()">attiva</label>
+  <button class="s" onclick="moveUp(${i})" ${i === 0 ? 'disabled style="opacity:0.3"' : ''}>↑</button>
+  <button class="s" onclick="moveDown(${i})" ${i === D.s.length - 1 ? 'disabled style="opacity:0.3"' : ''}>↓</button>
+  <button class="s" onclick="groups(${i})">Gruppi</button>
+  <button class="s" onclick="del(${i})">Elimina</button>
+</div>
       <div id="g${i}" data-state="closed"></div>
     </div>`).join('') || '<small>Nessuna lista ancora.</small>';
   

@@ -136,7 +136,7 @@ async function upd() {
   if (D.s.length) info.push(`${D.s.length} liste`);
   if (D.g.length) info.push(`${D.g.length} EPG`);
   if (l) {
-    if (syncKey) $('len').textContent = '🔗 Link breve (sincronizzato) · ' + info.join(', ');
+    if (syncKey) $('len').textContent = ' Link breve (sincronizzato) · ' + info.join(', ');
     else $('len').textContent = l.length + ' caratteri · ' + info.join(', ') + (l.length > 2000 ? ' ⚠️ link lungo: clicca "Salva" per accorciarlo' : '');
   } else $('len').textContent = '';
 }
@@ -146,23 +146,12 @@ function render() {
     <div class="card type-${s.t || 'm3u'}">
       <b>${esc(s.n)}</b> <small style="text-transform:uppercase;opacity:0.8">${s.t}</small> <small>${(s.x || []).length ? ' · ' + s.x.length + ' gruppi esclusi' : ''}</small>
       <div class="row">
-  <label><input type="checkbox" ${s.e !== 0 ? 'checked' : ''} onchange="D.s[${i}].e=this.checked?1:0;upd()">attiva</label>
-function moveUp(i) {
-  if (i <= 0) return;
-  const item = D.s.splice(i, 1)[0];
-  D.s.splice(i - 1, 0, item);
-  render();
-}
-
-function moveDown(i) {
-  if (i >= D.s.length - 1) return;
-  const item = D.s.splice(i, 1)[0];
-  D.s.splice(i + 1, 0, item);
-  render();
-}
-  <button class="s" onclick="groups(${i})">Gruppi</button>
-  <button class="s" onclick="del(${i})">Elimina</button>
-</div>
+        <label><input type="checkbox" ${s.e !== 0 ? 'checked' : ''} onchange="D.s[${i}].e=this.checked?1:0;upd()">attiva</label>
+        <button class="s" onclick="moveUp(${i})" ${i === 0 ? 'disabled style="opacity:0.3"' : ''}>↑</button>
+        <button class="s" onclick="moveDown(${i})" ${i === D.s.length - 1 ? 'disabled style="opacity:0.3"' : ''}>↓</button>
+        <button class="s" onclick="groups(${i})">Gruppi</button>
+        <button class="s" onclick="del(${i})">Elimina</button>
+      </div>
       <div id="g${i}" data-state="closed"></div>
     </div>`).join('') || '<small>Nessuna lista ancora.</small>';
   
@@ -207,7 +196,7 @@ async function groups(i) {
       <div class="grp-actions">
         <a onclick="selectAll(${i})">✓ Seleziona tutti</a>
         <span>·</span>
-        <a onclick="deselectAll(${i})">✗ Deseleziona tutti</a>
+        <a onclick="deselectAll(${i})"> Deseleziona tutti</a>
       </div>
       <div class="grp" id="grpList${i}">
         ${groupNames.map(n => `<label><input type="checkbox" data-n="${esc(n)}" ${s.x.includes(n) ? '' : 'checked'} onchange="tg(${i},this)">${esc(n)} <small>(${g[n]})</small></label>`).join('')}
@@ -221,7 +210,6 @@ async function groups(i) {
   }
 }
 
-// Seleziona tutti i gruppi (nessuno escluso)
 function selectAll(i) {
   const s = D.s[i];
   s.x = [];
@@ -230,7 +218,6 @@ function selectAll(i) {
   upd();
 }
 
-// Deseleziona tutti i gruppi (tutti esclusi)
 function deselectAll(i) {
   const s = D.s[i];
   const el = $('grpList' + i);
@@ -245,6 +232,20 @@ function tg(i, e) {
   s.x = (s.x || []).filter((v) => v !== n);
   if (!e.checked) s.x.push(n);
   upd();
+}
+
+function moveUp(i) {
+  if (i <= 0) return;
+  const item = D.s.splice(i, 1)[0];
+  D.s.splice(i - 1, 0, item);
+  render();
+}
+
+function moveDown(i) {
+  if (i >= D.s.length - 1) return;
+  const item = D.s.splice(i, 1)[0];
+  D.s.splice(i + 1, 0, item);
+  render();
 }
 
 function del(i) { if (confirm('Eliminare questa lista?')) { D.s.splice(i, 1); render(); } }
@@ -283,7 +284,7 @@ async function testEpg() {
   try {
     const r = await fetch(u, { method: 'HEAD' });
     if (r.ok) alert('✅ URL EPG raggiungibile!');
-    else alert('⚠️ URL EPG non raggiungibile (HTTP ' + r.status + ')');
+    else alert('️ URL EPG non raggiungibile (HTTP ' + r.status + ')');
   } catch (e) { alert('❌ Errore di rete: ' + e.message); }
   finally { btn.textContent = 'Testa EPG'; btn.disabled = false; }
 }
@@ -361,7 +362,7 @@ async function saveToCloud() {
 async function loadFromCloud() {
   const key = $('syncKey').value.trim();
   if (!key) return alert('Inserisci la chiave di sincronizzazione');
-  showStatus(' Caricamento in corso...', 'loading');
+  showStatus('⏳ Caricamento in corso...', 'loading');
   try {
     const r = await fetch('/api/sync?k=' + encodeURIComponent(key));
     if (r.ok) {

@@ -278,7 +278,7 @@ async function testEpg() {
 function add() {
   const t = $('t').value, u = $('u').value.trim();
   if (!u) return alert('Inserisci l\'URL');
-  const s = { t, n: $('n').value || t, u, x: [], e: 1 };
+  const s = { t, n: $('n').value || t, u, x: [], e: 1, pf: 1 };
   if (t === 'xtream') { s.a = $('us').value.trim(); s.p = $('pw').value.trim(); }
   if (t === 'stalker') s.m = $('m').value.trim().toUpperCase();
   D.s.push(s);

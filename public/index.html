@@ -147,8 +147,19 @@ function render() {
       <b>${esc(s.n)}</b> <small style="text-transform:uppercase;opacity:0.8">${s.t}</small> <small>${(s.x || []).length ? ' · ' + s.x.length + ' gruppi esclusi' : ''}</small>
       <div class="row">
   <label><input type="checkbox" ${s.e !== 0 ? 'checked' : ''} onchange="D.s[${i}].e=this.checked?1:0;upd()">attiva</label>
-  <button class="s" onclick="moveUp(${i})" ${i === 0 ? 'disabled style="opacity:0.3"' : ''}>↑</button>
-  <button class="s" onclick="moveDown(${i})" ${i === D.s.length - 1 ? 'disabled style="opacity:0.3"' : ''}>↓</button>
+function moveUp(i) {
+  if (i <= 0) return;
+  const item = D.s.splice(i, 1)[0];
+  D.s.splice(i - 1, 0, item);
+  render();
+}
+
+function moveDown(i) {
+  if (i >= D.s.length - 1) return;
+  const item = D.s.splice(i, 1)[0];
+  D.s.splice(i + 1, 0, item);
+  render();
+}
   <button class="s" onclick="groups(${i})">Gruppi</button>
   <button class="s" onclick="del(${i})">Elimina</button>
 </div>

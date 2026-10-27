@@ -95,13 +95,15 @@ export default async function handler(req, res) {
     const ov = s.o || {};
     const hasOv = Object.keys(ov).length > 0;
     const lab = String(s.n || '').replace(/"/g, "'");
+    
+    // MODIFICA QUI: il prefisso viene applicato SEMPRE, senza controllare s.pf
     const tag = (c) => {
       const inf = hasOv ? applyOv(c.inf, ov[uh(c.url)]) : c.inf;
-      if (!s.pf) return inf;
       return /group-title="/.test(inf)
         ? inf.replace(/group-title="([^"]*)"/, (m, g) => `group-title="${lab} | ${g || 'Senza gruppo'}"`)
         : inf.replace(/^#EXTINF:(-?[\d.]+)/, (m, d) => `#EXTINF:${d} group-title="${lab} | Senza gruppo"`);
     };
+    
     let out = '';
     for (const c of o.r) if (!ex.has(c.group)) out += tag(c) + '\n' + c.extra + c.url + '\n';
     res.write(out);

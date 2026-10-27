@@ -1,12 +1,12 @@
-import { getCfg, collect, infParts, uh, applyOv } from './_lib.js';
+import { collect, infParts, uh, applyOv } from './_lib.js';
 
 export const config = { maxDuration: 60 };
 
-// Funzione per recuperare configurazione da chiave utente
+// Recupera configurazione dal database usando la chiave
 async function getUserCfg(key) {
   const DB_URL = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
   const DB_TOK = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
-  const DB_KEY = `iptvhub:user:${key}`;
+  const DB_KEY = 'iptvhub:cfg';
   
   if (!DB_URL || !DB_TOK) throw new Error('Database non configurato');
   
@@ -14,35 +14,37 @@ async function getUserCfg(key) {
     headers: { Authorization: 'Bearer ' + DB_TOK } 
   });
   const j = await r.json();
-  if (!j.result) throw new Error('Chiave non valida o configurazione non trovata');
-  return JSON.parse(j.result);
+  if (!j.result) throw new Error('Nessuna configurazione salvata');
+  
+  const cfg = JSON.parse(j.result);
+  if (!cfg.k || cfg.k !== key) throw new Error('Chiave non valida');
+  return cfg;
 }
 
-// Modifica la funzione getCfg per supportare sia ?k= che ?c=
-async function getCfgFromRequest(q) {
-  if (q.has('k')) {
-    // Recupera dal database usando la chiave
-    return await getUserCfg(q.get('k'));
-  } else if (q.has('c')) {
-    // Decodifica dalla configurazione inline (vecchio metodo)
-    const b64d = (s) => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0));
-    const cfg = JSON.parse(await new Response(new Blob([b64d(q.get('c'))]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text());
-    return cfg;
-  }
-  throw new Error('Parametro mancante: usa ?k=chiave o ?c=configurazione');
+// Decodifica configurazione inline (metodo vecchio)
+async function getInlineCfg(token) {
+  const b64d = (s) => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0));
+  return JSON.parse(await new Response(new Blob([b64d(token)]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text());
 }
 
 export default async function handler(req, res) {
   const origin = `https://${req.headers.host}`;
   const q = new URL(req.url, origin).searchParams;
   let cfg;
+  
   try {
-    cfg = await getCfgFromRequest(q);
+    if (q.has('k')) {
+      cfg = await getUserCfg(q.get('k'));
+    } else if (q.has('c')) {
+      cfg = await getInlineCfg(q.get('c'));
+    } else {
+      throw new Error('Parametro mancante');
+    }
   } catch (e) {
     return res.status(400).send('Link non valido: ' + e.message);
   }
 
-  // Elenco gruppi di una sorgente (usato dal pannello)
+  // Elenco gruppi
   if (q.has('groups')) {
     try {
       const items = await collect(cfg.s[+q.get('groups')], origin);
@@ -54,7 +56,7 @@ export default async function handler(req, res) {
     }
   }
 
-  // Ricerca canali di una sorgente per la modifica (massimo 60 risultati)
+  // Ricerca canali
   if (q.has('channels')) {
     try {
       const items = await collect(cfg.s[+q.get('channels')], origin);
@@ -75,7 +77,7 @@ export default async function handler(req, res) {
     }
   }
 
-  // Playlist unita, scritta a pezzi man mano che le liste rispondono
+  // Playlist M3U
   const act = cfg.s.filter((s) => s.e !== 0);
   const ps = act.map((s) => collect(s, origin).then((r) => ({ r }), (e) => ({ err: String(e) })));
   res.setHeader('Content-Type', 'application/x-mpegURL; charset=utf-8');
@@ -96,7 +98,6 @@ export default async function handler(req, res) {
     const tag = (c) => {
       const inf = hasOv ? applyOv(c.inf, ov[uh(c.url)]) : c.inf;
       if (!s.pf) return inf;
-      // Opzione "nome lista nei gruppi": group-title diventa "Lista | Gruppo"
       return /group-title="/.test(inf)
         ? inf.replace(/group-title="([^"]*)"/, (m, g) => `group-title="${lab} | ${g || 'Senza gruppo'}"`)
         : inf.replace(/^#EXTINF:(-?[\d.]+)/, (m, d) => `#EXTINF:${d} group-title="${lab} | Senza gruppo"`);

@@ -34,6 +34,11 @@ small{color:var(--m)}
 .grp-actions{display:flex;gap:10px;font-size:12px;margin:6px 0}
 .grp-actions a{color:var(--a);cursor:pointer;text-decoration:none}
 .grp-actions a:hover{text-decoration:underline}
+.proxy-box{background:#1a2332;border:1px solid #4f8cff4;border-radius:8px;padding:10px;margin:10px 0}
+.proxy-box b{color:#4f8cff}
+.test-result{margin-top:8px;padding:8px;border-radius:6px;font-size:13px;white-space:pre-wrap;word-break:break-all;max-height:200px;overflow:auto}
+.test-result.ok{background:#2a9d8f2;color:#2a9d8f;border:1px solid #2a9d8f4}
+.test-result.err{background:#e76f512;color:#e76f51;border:1px solid #e76f514}
 </style>
 </head>
 <body>
@@ -63,6 +68,16 @@ small{color:var(--m)}
   <div class="sync-status" id="syncStatus"></div>
 </div>
 
+<div class="proxy-box">
+  <b>⚡ Proxy Cloudflare (opzionale)</b>
+  <small style="display:block;margin:4px 0">Usa un proxy per testare link altrimenti bloccati (CORS, IP Vercel).</small>
+  <input id="proxyUrl" placeholder="URL Worker (es. https://iptv-proxy.tuo-nome.workers.dev)" style="font-size:13px">
+  <div class="row">
+    <label><input type="checkbox" id="useProxy" onchange="toggleProxy()"> Usa proxy per i test</label>
+    <button class="s" onclick="testProxy()" style="font-size:12px">Testa proxy</button>
+  </div>
+</div>
+
 <h2>Liste canali</h2>
 <div id="list"></div>
 
@@ -82,6 +97,7 @@ small{color:var(--m)}
     <button onclick="add()">+ Aggiungi</button>
     <button class="t" id="testBtn" onclick="testLink()">Testa link</button>
   </div>
+  <div id="testResult"></div>
 </div>
 
 <h2>📅 Sorgenti EPG</h2>
@@ -95,6 +111,7 @@ small{color:var(--m)}
     <button onclick="addEpg()">+ Aggiungi EPG</button>
     <button class="t" id="testEpgBtn" onclick="testEpg()">Testa EPG</button>
   </div>
+  <div id="testEpgResult"></div>
 </div>
 
 <h2>Modifica un link esistente</h2>
@@ -115,6 +132,8 @@ const dec = async (t) =>
 
 let D = { s: [], g: [] };
 let syncKey = localStorage.syncKey || '';
+let proxyUrl = localStorage.proxyUrl || '';
+let useProxy = localStorage.useProxy === 'true';
 
 try { 
   const saved = JSON.parse(localStorage.cfg);
@@ -122,6 +141,34 @@ try {
 } catch {}
 
 if (syncKey) $('syncKey').value = syncKey;
+if (proxyUrl) $('proxyUrl').value = proxyUrl;
+if (useProxy) $('useProxy').checked = true;
+
+function toggleProxy() {
+  useProxy = $('useProxy').checked;
+  localStorage.useProxy = useProxy;
+  showStatus(useProxy ? 'Proxy attivato per i test' : 'Proxy disattivato', 'loading');
+}
+
+async function testProxy() {
+  const url = $('proxyUrl').value.trim();
+  if (!url) return alert('Inserisci l\'URL del Worker');
+  
+  try {
+    const r = await fetch(url + '/test?url=https://httpbin.org/get&type=m3u');
+    if (r.ok) {
+      const data = await r.json();
+      alert('✅ Proxy funzionante!\nStatus: ' + data.status + '\nIP proxy: ' + (data.proxyIp || 'ok'));
+      proxyUrl = url;
+      localStorage.proxyUrl = url;
+      showStatus('Proxy salvato e funzionante', 'success');
+    } else {
+      alert('❌ Proxy non raggiungibile: ' + r.status);
+    }
+  } catch (e) {
+    alert('❌ Errore: ' + e.message);
+  }
+}
 
 async function upd() {
   try { localStorage.cfg = JSON.stringify(D); } catch {}
@@ -136,7 +183,7 @@ async function upd() {
   if (D.s.length) info.push(`${D.s.length} liste`);
   if (D.g.length) info.push(`${D.g.length} EPG`);
   if (l) {
-    if (syncKey) $('len').textContent = ' Link breve (sincronizzato) · ' + info.join(', ');
+    if (syncKey) $('len').textContent = '🔗 Link breve (sincronizzato) · ' + info.join(', ');
     else $('len').textContent = l.length + ' caratteri · ' + info.join(', ') + (l.length > 2000 ? ' ⚠️ link lungo: clicca "Salva" per accorciarlo' : '');
   } else $('len').textContent = '';
 }
@@ -259,33 +306,94 @@ function ty() {
   $('u').placeholder = t === 'm3u' ? 'URL lista M3U' : t === 'xtream' ? 'Server (http://host:porta)' : 'Portale (http://host/c/)';
 }
 
+// Test link con supporto proxy
 async function testLink() {
   const t = $('t').value, u = $('u').value.trim();
   if (!u) return alert('Inserisci l\'URL per poterlo testare');
-  const s = { t, n: $('n').value || t, u, x: [], e: 1 };
-  if (t === 'xtream') { s.a = $('us').value.trim(); s.p = $('pw').value.trim(); }
-  if (t === 'stalker') s.m = $('m').value.trim().toUpperCase();
+  
+  const resultEl = $('testResult');
+  resultEl.innerHTML = '<div class="test-result">⏳ Test in corso...</div>';
+  
   const btn = $('testBtn');
   btn.textContent = 'Test in corso...'; btn.disabled = true;
+  
   try {
-    const c = await enc({ s: [s], g: [] });
-    const r = await fetch(`/api/playlist?groups=0&c=${c}`);
-    if (!r.ok) alert('❌ Errore: ' + (await r.text()));
-    else alert(`✅ Link valido! Trovati ${Object.keys(await r.json()).length} gruppi.`);
-  } catch (e) { alert('❌ Errore: ' + e.message); }
+    if (useProxy && proxyUrl) {
+      // Test via proxy Cloudflare
+      const proxyTestUrl = `${proxyUrl}/test?url=${encodeURIComponent(u)}&type=${t}`;
+      const r = await fetch(proxyTestUrl);
+      const data = await r.json();
+      
+      if (data.status >= 200 && data.status < 400) {
+        let msg = `✅ Link valido (via proxy)\n`;
+        msg += `Status HTTP: ${data.status}\n`;
+        msg += `Content-Type: ${data.contentType || 'n/a'}\n`;
+        if (data.analysis) {
+          msg += `Formato M3U: ${data.analysis.isM3U ? 'Sì' : 'No'}\n`;
+          msg += `Canali trovati: ${data.analysis.channels}\n`;
+          msg += `Gruppi trovati: ${data.analysis.groups}\n`;
+        }
+        if (data.truncated) msg += `⚠️ Risposta troncata (troppo lunga)\n`;
+        resultEl.innerHTML = `<div class="test-result ok">${esc(msg)}</div>`;
+      } else {
+        resultEl.innerHTML = `<div class="test-result err">❌ Errore HTTP ${data.status}\n${esc(data.preview || '').slice(0, 500)}</div>`;
+      }
+    } else {
+      // Test diretto via backend Vercel
+      const s = { t, n: $('n').value || t, u, x: [], e: 1 };
+      if (t === 'xtream') { s.a = $('us').value.trim(); s.p = $('pw').value.trim(); }
+      if (t === 'stalker') s.m = $('m').value.trim().toUpperCase();
+      
+      const c = await enc({ s: [s], g: [] });
+      const r = await fetch(`/api/playlist?groups=0&c=${c}`);
+      if (!r.ok) {
+        resultEl.innerHTML = `<div class="test-result err">❌ Errore: ${esc(await r.text())}</div>`;
+      } else {
+        const g = await r.json();
+        resultEl.innerHTML = `<div class="test-result ok">✅ Link valido! Trovati ${Object.keys(g).length} gruppi.</div>`;
+      }
+    }
+  } catch (e) { 
+    resultEl.innerHTML = `<div class="test-result err">❌ Errore: ${esc(e.message)}</div>`;
+  }
   finally { btn.textContent = 'Testa link'; btn.disabled = false; }
 }
 
+// Test EPG con supporto proxy
 async function testEpg() {
   const u = $('epgU').value.trim();
   if (!u) return alert('Inserisci l\'URL EPG');
+  
+  const resultEl = $('testEpgResult');
+  resultEl.innerHTML = '<div class="test-result"> Test in corso...</div>';
+  
   const btn = $('testEpgBtn');
   btn.textContent = 'Test in corso...'; btn.disabled = true;
+  
   try {
-    const r = await fetch(u, { method: 'HEAD' });
-    if (r.ok) alert('✅ URL EPG raggiungibile!');
-    else alert('️ URL EPG non raggiungibile (HTTP ' + r.status + ')');
-  } catch (e) { alert('❌ Errore di rete: ' + e.message); }
+    if (useProxy && proxyUrl) {
+      const r = await fetch(`${proxyUrl}/test?url=${encodeURIComponent(u)}&type=m3u`);
+      const data = await r.json();
+      
+      if (data.status >= 200 && data.status < 400) {
+        const isXml = (data.contentType || '').includes('xml');
+        let msg = `✅ URL raggiungibile (via proxy)\n`;
+        msg += `Status: ${data.status}\n`;
+        msg += `Content-Type: ${data.contentType || 'n/a'}\n`;
+        msg += `Sembra XML: ${isXml ? 'Sì ✓' : 'No ⚠️'}\n`;
+        if (data.truncated) msg += `⚠️ Risposta troncata\n`;
+        resultEl.innerHTML = `<div class="test-result ok">${esc(msg)}</div>`;
+      } else {
+        resultEl.innerHTML = `<div class="test-result err">❌ HTTP ${data.status}</div>`;
+      }
+    } else {
+      const r = await fetch(u, { method: 'HEAD' });
+      if (r.ok) resultEl.innerHTML = `<div class="test-result ok">✅ URL EPG raggiungibile!</div>`;
+      else resultEl.innerHTML = `<div class="test-result err">⚠️ HTTP ${r.status}</div>`;
+    }
+  } catch (e) { 
+    resultEl.innerHTML = `<div class="test-result err">❌ ${esc(e.message)}</div>`;
+  }
   finally { btn.textContent = 'Testa EPG'; btn.disabled = false; }
 }
 
@@ -297,6 +405,7 @@ function add() {
   if (t === 'stalker') s.m = $('m').value.trim().toUpperCase();
   D.s.push(s);
   ['n', 'u', 'us', 'pw', 'm'].forEach(x => $(x).value = '');
+  $('testResult').innerHTML = '';
   render();
 }
 
@@ -305,6 +414,7 @@ function addEpg() {
   if (!u) return alert('Inserisci l\'URL EPG');
   D.g.push({ n, u, e: 1 });
   $('epgN').value = ''; $('epgU').value = '';
+  $('testEpgResult').innerHTML = '';
   render();
 }
 
@@ -355,7 +465,7 @@ async function saveToCloud() {
       showStatus('❌ Errore: ' + (await r.text()), 'error');
     }
   } catch (e) {
-    showStatus('❌ Errore di rete: ' + e.message, 'error');
+    showStatus(' Errore di rete: ' + e.message, 'error');
   }
 }
 

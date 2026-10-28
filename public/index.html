@@ -423,57 +423,7 @@ function ty() {
 }
 
 // Test link con supporto proxy
-async function testLink() {
-  const t = $('t').value, u = $('u').value.trim();
-  if (!u) return alert('Inserisci l\'URL per poterlo testare');
-  
-  const resultEl = $('testResult');
-  resultEl.innerHTML = '<div class="test-result">⏳ Test in corso...</div>';
-  
-  const btn = $('testBtn');
-  btn.textContent = 'Test in corso...'; btn.disabled = true;
-  
-  try {
-    if (useProxy && proxyUrl) {
-      // Test via proxy Cloudflare
-      const proxyTestUrl = `${proxyUrl}/test?url=${encodeURIComponent(u)}&type=${t}`;
-      const r = await fetch(proxyTestUrl);
-      const data = await r.json();
-      
-      if (data.status >= 200 && data.status < 400) {
-        let msg = `✅ Link valido (via proxy)\n`;
-        msg += `Status HTTP: ${data.status}\n`;
-        msg += `Content-Type: ${data.contentType || 'n/a'}\n`;
-        if (data.analysis) {
-          msg += `Formato M3U: ${data.analysis.isM3U ? 'Sì' : 'No'}\n`;
-          msg += `Canali trovati: ${data.analysis.channels}\n`;
-          msg += `Gruppi trovati: ${data.analysis.groups}\n`;
-        }
-        if (data.truncated) msg += `⚠️ Risposta troncata (troppo lunga)\n`;
-        resultEl.innerHTML = `<div class="test-result ok">${esc(msg)}</div>`;
-      } else {
-        resultEl.innerHTML = `<div class="test-result err">❌ Errore HTTP ${data.status}\n${esc(data.preview || '').slice(0, 500)}</div>`;
-      }
-    } else {
-      // Test diretto via backend Vercel
-      const s = { t, n: $('n').value || t, u, x: [], e: 1 };
-      if (t === 'xtream') { s.a = $('us').value.trim(); s.p = $('pw').value.trim(); }
-      if (t === 'stalker') s.m = $('m').value.trim().toUpperCase();
-      
-      const c = await enc({ s: [s], g: [] });
-      const r = await fetch(`/api/playlist?groups=0&c=${c}`);
-      if (!r.ok) {
-        resultEl.innerHTML = `<div class="test-result err">❌ Errore: ${esc(await r.text())}</div>`;
-      } else {
-        const g = await r.json();
-        resultEl.innerHTML = `<div class="test-result ok">✅ Link valido! Trovati ${Object.keys(g).length} gruppi.</div>`;
-      }
-    }
-  } catch (e) { 
-    resultEl.innerHTML = `<div class="test-result err">❌ Errore: ${esc(e.message)}</div>`;
-  }
-  finally { btn.textContent = 'Testa link'; btn.disabled = false; }
-}
+testLink()
 
 // Test EPG con supporto proxy
 async function testEpg() {

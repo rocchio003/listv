@@ -1,3 +1,5 @@
+import { epgUrls, getLong } from './_lib.js';
+
 export const config = { maxDuration: 60 };
 
 async function getUserCfg(key) {
@@ -39,59 +41,45 @@ export default async function handler(req, res) {
     return res.status(400).send('Link non valido: ' + e.message);
   }
 
-  // Raccogli tutti gli URL EPG unici
-  const urls = new Set();
-  
-  // 1. Aggiungi gli EPG manuali (solo se attivi)
-  if (cfg.g && Array.isArray(cfg.g)) {
-    cfg.g.filter(g => g.e !== 0).forEach(g => {
-      if (g.u) urls.add(g.u);
-    });
-  }
-
-  // 2. Aggiungi automaticamente gli EPG dalle liste Xtream attive
-  if (cfg.s && Array.isArray(cfg.s)) {
-    for (const s of cfg.s) {
-      if (s.e !== 0 && s.t === 'xtream' && s.u && s.a && s.p) {
-        urls.add(`${s.u.replace(/\/+$/, '')}/xmltv.php?username=${encodeURIComponent(s.a)}&password=${encodeURIComponent(s.p)}`);
-      }
-    }
-  }
-
-  const urlArray = Array.from(urls);
-  if (urlArray.length === 0) {
-    return res.status(404).send('Nessuna sorgente EPG configurata o attiva');
-  }
+  const urls = await epgUrls(cfg);
+  if (!urls.length) return res.status(404).send('Nessuna sorgente EPG configurata');
 
   res.setHeader('Content-Type', 'application/xml; charset=utf-8');
   res.write('<?xml version="1.0" encoding="UTF-8"?>\n<tv>\n');
   
-  // Scarica e unisci i file XML
-  for (const url of urlArray) {
+  let activeStreams = urls.length;
+  
+  for (const url of urls) {
     try {
-      const r = await fetch(url, { 
-        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }, 
-        signal: AbortSignal.timeout(45000) 
-      });
+      const r = await getLong(url);
+      if (!r.ok) {
+        activeStreams--;
+        if (activeStreams === 0) res.end('</tv>\n');
+        continue;
+      }
       
-      if (!r.ok) continue;
-      
+      // Vercel/Node decomprime automaticamente il gzip. 
+      // Leggiamo direttamente il testo per evitare errori di doppia decompressione.
       const text = await r.text();
       
-      // Pulizia per evitare tag <tv> o <?xml> annidati che rompono il file finale
-      let cleanXml = text
-        .replace(/<\?xml[^>]*\?>/gi, '')
-        .replace(/<tv[^>]*>/gi, '')
-        .replace(/<\/tv>/gi, '')
-        .trim();
-        
-      if (cleanXml) {
-        res.write(cleanXml + '\n');
+      // Estraiamo solo i blocchi <channel> e <programme> per unire più fonti 
+      // senza duplicare i tag <?xml> o <tv> di apertura/chiusura.
+      const channels = text.match(/<channel[\s\S]*?<\/channel>/gi) || [];
+      const programmes = text.match(/<programme[\s\S]*?<\/programme>/gi) || [];
+      
+      for (const ch of channels) {
+        res.write(ch + '\n');
+      }
+      for (const pr of programmes) {
+        res.write(pr + '\n');
       }
     } catch (e) {
-      console.error('Errore fetch EPG:', url, e.message);
+      console.error('EPG fetch error for', url, e);
+    }
+    
+    activeStreams--;
+    if (activeStreams === 0) {
+      res.end('</tv>\n');
     }
   }
-  
-  res.end('</tv>');
 }

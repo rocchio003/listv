@@ -26,7 +26,6 @@ body{
 }
 .wrap{max-width:900px;margin:0 auto}
 
-/* header */
 .top{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:22px;flex-wrap:wrap}
 .brand{display:flex;align-items:center;gap:14px}
 .logo{width:52px;height:52px;border-radius:16px;display:grid;place-items:center;font-size:26px;flex:none;
@@ -36,7 +35,6 @@ h1{font-size:26px;margin:0;letter-spacing:-.03em;font-weight:750}
 h2{font-size:19px;margin:34px 0 12px;letter-spacing:-.02em;font-weight:700}
 small{color:var(--muted);font-size:12.5px}
 
-/* card */
 .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:20px;margin:10px 0;position:relative}
 .card.type-m3u{box-shadow:inset 0 0 0 1px rgba(56,189,248,.22)}
 .card.type-xtream{box-shadow:inset 0 0 0 1px rgba(0,229,160,.22)}
@@ -49,19 +47,17 @@ small{color:var(--muted);font-size:12.5px}
 .kicker .em{font-size:14px;letter-spacing:0}
 .muted{color:var(--muted);font-size:13.5px}
 
-/* badge per tipo (card generate dal JS) */
 .card > b{font-size:15px;font-weight:700;letter-spacing:-.01em}
 .card > b::before{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:10px;
   margin-right:9px;vertical-align:-7px;font-size:15px;font-style:normal}
 .card.type-m3u > b::before{content:"🎵";background:rgba(56,189,248,.15);color:var(--sky)}
 .card.type-xtream > b::before{content:"⚽";background:rgba(0,229,160,.15);color:var(--mint)}
-.card.type-stalker > b::before{content:"📡";background:rgba(255,176,32,.15);color:var(--amber)}
+.card.type-stalker > b::before{content:"";background:rgba(255,176,32,.15);color:var(--amber)}
 .card.type-epg > b::before{content:"📅";background:rgba(167,139,250,.15);color:var(--violet)}
 .card > b + small{font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;
   background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:6px;padding:2px 7px;color:var(--muted)}
 .card > b + small + small{background:none;border:0;padding:0;font-weight:400;margin-left:6px}
 
-/* form */
 input,select{width:100%;font:inherit;font-size:14.5px;color:var(--text);background:var(--card2);
   border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin:7px 0;outline:none;
   transition:border-color .15s,box-shadow .15s}
@@ -76,7 +72,6 @@ input[type="checkbox"]{width:auto;height:auto;margin:0;padding:0;border:0;backgr
   box-shadow:none;accent-color:var(--mint)}
 [hidden]{display:none}
 
-/* pulsanti */
 button{display:inline-flex;align-items:center;justify-content:center;gap:7px;font:inherit;font-size:14px;
   font-weight:650;border:0;border-radius:14px;padding:11px 18px;margin:0;cursor:pointer;color:#0c0d10;
   background:linear-gradient(135deg,var(--mint),#38f9c4);transition:filter .15s,transform .12s}
@@ -89,7 +84,6 @@ button.s:hover{background:#23262d;filter:none}
 button.t{background:linear-gradient(135deg,var(--amber),var(--coral));color:#241109}
 button.t:hover{filter:brightness(1.06)}
 
-/* righe e toggle */
 .row{display:flex;flex-wrap:wrap;align-items:center;gap:9px;margin-top:12px}
 .row label{display:flex;align-items:center;gap:9px;font-size:13.5px;color:var(--muted);cursor:pointer}
 .row input{width:auto}
@@ -103,18 +97,15 @@ button.t:hover{filter:brightness(1.06)}
   background-image:radial-gradient(circle at 24px 10px,var(--mint) 6px,transparent 7px);
   box-shadow:0 0 12px rgba(0,229,160,.35)}
 
-/* link */
 .meta{display:block;margin-top:10px;font-size:12.5px;color:var(--muted)}
 .linkbox{background:var(--card2);border:1px solid var(--line);border-radius:16px;padding:4px 16px}
 .linkbox input{margin:0;background:none;border:0;box-shadow:none;padding:11px 0}
 .linkbox input:focus{border:0;box-shadow:none}
 .sync-status{font-size:12.5px;margin-top:11px;min-height:1em}
 
-/* bento */
 .bento{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:4px}
 .bento .card{margin:0}
 
-/* liste / epg generate dal JS */
 .epg-url{display:block;margin-top:11px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
   font-size:12.5px;color:var(--muted);background:#101216;border:1px dashed var(--line);
   border-radius:12px;padding:10px 13px;word-break:break-all;cursor:pointer}
@@ -261,20 +252,32 @@ let D = { s: [], g: [] };
 let syncKey = localStorage.syncKey || '';
 let proxyUrl = localStorage.proxyUrl || '';
 let useProxy = localStorage.useProxy === 'true';
+let useManualEpg = localStorage.useManualEpg === 'true';
 
 try { 
   const saved = JSON.parse(localStorage.cfg);
-  if (saved) { D.s = saved.s || []; D.g = saved.g || []; }
+  if (saved) { 
+    D.s = saved.s || []; 
+    D.g = saved.g || []; 
+    if (saved.useManualEpg !== undefined) useManualEpg = saved.useManualEpg;
+  }
 } catch {}
 
 if (syncKey) $('syncKey').value = syncKey;
 if (proxyUrl) $('proxyUrl').value = proxyUrl;
 if (useProxy) $('useProxy').checked = true;
+if (useManualEpg) $('useManualEpg').checked = true;
 
 function toggleProxy() {
   useProxy = $('useProxy').checked;
   localStorage.useProxy = useProxy;
   showStatus(useProxy ? 'Proxy attivato per i test' : 'Proxy disattivato', 'loading');
+}
+
+function toggleManualEpg() {
+  useManualEpg = $('useManualEpg').checked;
+  localStorage.useManualEpg = useManualEpg;
+  upd();
 }
 
 async function testProxy() {
@@ -299,12 +302,13 @@ async function testProxy() {
 }
 
 async function upd() {
-  try { localStorage.cfg = JSON.stringify(D); } catch {}
+  try { localStorage.cfg = JSON.stringify({ s: D.s, g: D.g, useManualEpg }); } catch {}
   const hasSources = D.s.length > 0 || D.g.length > 0;
   let l = '';
   if (hasSources) {
+    const cfgData = { s: D.s, g: D.g, useManualEpg };
     if (syncKey) l = location.origin + '/playlist.m3u?k=' + syncKey;
-    else l = location.origin + '/playlist.m3u?c=' + (await enc(D));
+    else l = location.origin + '/playlist.m3u?c=' + (await enc(cfgData));
   }
   $('link').value = l;
   const info = [];
@@ -352,7 +356,7 @@ async function groups(i) {
   el.textContent = 'Carico i gruppi…';
 
   try {
-    const r = await fetch(`/api/playlist?groups=${i}&c=${await enc(D)}`);
+    const r = await fetch(`/api/playlist?groups=${i}&c=${await enc({s: D.s, g: D.g, useManualEpg})}`);
     if (!r.ok) { el.textContent = 'Errore: ' + (await r.text()); el.dataset.state = 'closed'; return; }
     
     const g = await r.json();
@@ -434,11 +438,8 @@ function ty() {
   $('u').placeholder = t === 'm3u' ? 'URL lista M3U' : t === 'xtream' ? 'Server (http://host:porta)' : 'Portale (http://host/c/)';
 }
 
-// ==========================================
-// === FUNZIONE TEST LINK CORRETTA =========
-// ==========================================
 async function testLink() {
-  console.log("🔍 Test link avviato...");
+  console.log(" Test link avviato...");
   const t = $('t').value;
   const u = $('u').value.trim();
   
@@ -455,7 +456,6 @@ async function testLink() {
       alert('Per testare Xtream, inserisci Username e Password');
       return;
     }
-    // Costruiamo l'URL COMPLETO come lo vede il player
     testUrl = `${u.replace(/\/+$/, '')}/get.php?username=${encodeURIComponent(us)}&password=${encodeURIComponent(pw)}&type=m3u_plus&output=ts`;
   } else if (t === 'stalker') {
     const m = $('m').value.trim().toUpperCase();
@@ -466,22 +466,16 @@ async function testLink() {
   }
 
   const resultEl = $('testResult');
-  if (!resultEl) {
-    console.error("❌ Elemento 'testResult' non trovato nell'HTML!");
-    return;
-  }
+  if (!resultEl) return;
   resultEl.innerHTML = '<div class="test-result">⏳ Test in corso...</div>';
   
   const btn = $('testBtn');
   if (btn) { btn.textContent = '⏳ Test...'; btn.disabled = true; }
   
   try {
-    console.log("Proxy attivo:", useProxy, "URL Proxy:", proxyUrl);
-    
     if (useProxy && proxyUrl) {
       const proxyEndpoint = proxyUrl.includes('/test') ? proxyUrl : proxyUrl + '/test';
       const fetchUrl = `${proxyEndpoint}?url=${encodeURIComponent(testUrl)}&type=m3u`;
-      console.log("📡 Chiamata al proxy:", fetchUrl);
       
       const r = await fetch(fetchUrl);
       const data = await r.json();
@@ -494,21 +488,20 @@ async function testLink() {
         if (data.truncated) msg += `⚠️ Risposta troncata (troppo lunga)\n`;
         resultEl.innerHTML = `<div class="test-result ok">${esc(msg)}</div>`;
       } else {
-        resultEl.innerHTML = `<div class="test-result err">❌ Errore HTTP ${data.status}\n${esc(data.preview || 'Nessun dettaglio').slice(0, 500)}</div>`;
+        resultEl.innerHTML = `<div class="test-result err"> Errore HTTP ${data.status}\n${esc(data.preview || 'Nessun dettaglio').slice(0, 500)}</div>`;
       }
     } else {
-      console.log("📡 Chiamata diretta al backend Vercel...");
       const s = { t, n: $('n').value || t, u, x: [], e: 1 };
       if (t === 'xtream') { s.a = $('us').value.trim(); s.p = $('pw').value.trim(); }
       if (t === 'stalker') s.m = $('m').value.trim().toUpperCase();
       
-      const c = await enc({ s: [s], g: [] });
+      const c = await enc({ s: [s], g: [], useManualEpg });
       const r = await fetch(`/api/playlist?groups=0&c=${c}`);
       
       if (!r.ok) {
         const errText = await r.text();
         if (errText.includes('<!DOCTYPE html>') || errText.includes('<html')) {
-          resultEl.innerHTML = `<div class="test-result err">❌ Il server ha bloccato la richiesta (probabile blocco IP Vercel).\n💡 Attiva la spunta "Usa proxy per i test" qui sopra per aggirare il blocco.</div>`;
+          resultEl.innerHTML = `<div class="test-result err"> Il server ha bloccato la richiesta (probabile blocco IP Vercel).\n💡 Attiva la spunta "Usa proxy per i test" qui sopra per aggirare il blocco.</div>`;
         } else {
           resultEl.innerHTML = `<div class="test-result err">❌ Errore: ${esc(errText)}</div>`;
         }
@@ -518,13 +511,11 @@ async function testLink() {
       }
     }
   } catch (e) { 
-    console.error("❌ Eccezione durante il test:", e);
     resultEl.innerHTML = `<div class="test-result err">❌ Errore di rete: ${esc(e.message)}</div>`;
   } finally { 
     if (btn) { btn.textContent = '🧪 Testa link'; btn.disabled = false; }
   }
 }
-// ==========================================
 
 async function testEpg() {
   const u = $('epgU').value.trim();
@@ -534,7 +525,7 @@ async function testEpg() {
   resultEl.innerHTML = '<div class="test-result">⏳ Test in corso...</div>';
   
   const btn = $('testEpgBtn');
-  btn.textContent = '⏳ Test...'; btn.disabled = true;
+  btn.textContent = ' Test...'; btn.disabled = true;
   
   try {
     if (useProxy && proxyUrl) {
@@ -597,6 +588,9 @@ async function imp() {
       const decoded = await dec(url.searchParams.get('c'));
       D.s = decoded.s || [];
       D.g = decoded.g || [];
+      useManualEpg = decoded.useManualEpg || false;
+      $('useManualEpg').checked = useManualEpg;
+      localStorage.useManualEpg = useManualEpg;
       render();
     }
     $('imp').value = '';
@@ -618,12 +612,12 @@ async function saveToCloud() {
   if (!key) return alert('Genera o inserisci prima una chiave di sincronizzazione');
   syncKey = key;
   localStorage.syncKey = key;
-  showStatus('⏳ Salvataggio in corso...', 'loading');
+  showStatus(' Salvataggio in corso...', 'loading');
   try {
     const r = await fetch('/api/sync', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ k: key, cfg: D })
+      body: JSON.stringify({ k: key, cfg: { s: D.s, g: D.g, useManualEpg } })
     });
     if (r.ok) {
       showStatus('✅ Dati salvati! Il link in alto è ora breve.', 'success');
@@ -646,6 +640,9 @@ async function loadFromCloud() {
       const data = await r.json();
       D.s = data.s || [];
       D.g = data.g || [];
+      useManualEpg = data.useManualEpg || false;
+      $('useManualEpg').checked = useManualEpg;
+      localStorage.useManualEpg = useManualEpg;
       syncKey = key;
       localStorage.syncKey = key;
       render();

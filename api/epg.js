@@ -25,6 +25,22 @@ async function getInlineCfg(token) {
   return JSON.parse(await new Response(new Blob([b64d(token)]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text());
 }
 
+// Funzione helper: legge la risposta e decomprime se è gzip
+async function readXmlResponse(r) {
+  const buffer = await r.arrayBuffer();
+  const bytes = new Uint8Array(buffer);
+  
+  // Magic number gzip: 0x1F 0x8B
+  if (bytes.length >= 2 && bytes[0] === 0x1F && bytes[1] === 0x8B) {
+    // È gzip, decomprimi
+    const stream = new Response(buffer).body.pipeThrough(new DecompressionStream('gzip'));
+    return await new Response(stream).text();
+  }
+  
+  // Altrimenti è testo puro (UTF-8)
+  return new TextDecoder('utf-8').decode(bytes);
+}
+
 export default async function handler(req, res) {
   const q = new URL(req.url, `https://${req.headers.host}`).searchParams;
   let cfg;
@@ -58,12 +74,10 @@ export default async function handler(req, res) {
         continue;
       }
       
-      // Vercel/Node decomprime automaticamente il gzip. 
-      // Leggiamo direttamente il testo per evitare errori di doppia decompressione.
-      const text = await r.text();
+      // Usa la funzione helper che gestisce sia gzip che testo puro
+      const text = await readXmlResponse(r);
       
-      // Estraiamo solo i blocchi <channel> e <programme> per unire più fonti 
-      // senza duplicare i tag <?xml> o <tv> di apertura/chiusura.
+      // Estraiamo solo i blocchi <channel> e <programme>
       const channels = text.match(/<channel[\s\S]*?<\/channel>/gi) || [];
       const programmes = text.match(/<programme[\s\S]*?<\/programme>/gi) || [];
       

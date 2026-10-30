@@ -1,5 +1,3 @@
-import { getCfg, epgUrls, getLong } from './_lib.js';
-
 export const config = { maxDuration: 60 };
 
 async function getUserCfg(key) {
@@ -41,33 +39,59 @@ export default async function handler(req, res) {
     return res.status(400).send('Link non valido: ' + e.message);
   }
 
-  const urls = await epgUrls(cfg);
-  if (!urls.length) return res.status(404).send('Nessuna sorgente EPG configurata');
+  // Raccogli tutti gli URL EPG unici
+  const urls = new Set();
+  
+  // 1. Aggiungi gli EPG manuali (solo se attivi)
+  if (cfg.g && Array.isArray(cfg.g)) {
+    cfg.g.filter(g => g.e !== 0).forEach(g => {
+      if (g.u) urls.add(g.u);
+    });
+  }
+
+  // 2. Aggiungi automaticamente gli EPG dalle liste Xtream attive
+  if (cfg.s && Array.isArray(cfg.s)) {
+    for (const s of cfg.s) {
+      if (s.e !== 0 && s.t === 'xtream' && s.u && s.a && s.p) {
+        urls.add(`${s.u.replace(/\/+$/, '')}/xmltv.php?username=${encodeURIComponent(s.a)}&password=${encodeURIComponent(s.p)}`);
+      }
+    }
+  }
+
+  const urlArray = Array.from(urls);
+  if (urlArray.length === 0) {
+    return res.status(404).send('Nessuna sorgente EPG configurata o attiva');
+  }
 
   res.setHeader('Content-Type', 'application/xml; charset=utf-8');
   res.write('<?xml version="1.0" encoding="UTF-8"?>\n<tv>\n');
   
-  let closed = 0;
-  const streams = urls.map((url) => getLong(url).then((r) => {
-    if (!r.ok) return '';
-    return r.body.pipeThrough(new DecompressionStream('gzip')).pipeThrough(new TextDecoderStream());
-  }).catch(() => ''));
-
-  for (const stream of streams) {
-    const reader = (await stream).getReader();
-    let buffer = '';
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += value;
-      const parts = buffer.split('</channel>');
-      for (let i = 0; i < parts.length - 1; i++) {
-        res.write(parts[i] + '</channel>\n');
+  // Scarica e unisci i file XML
+  for (const url of urlArray) {
+    try {
+      const r = await fetch(url, { 
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }, 
+        signal: AbortSignal.timeout(45000) 
+      });
+      
+      if (!r.ok) continue;
+      
+      const text = await r.text();
+      
+      // Pulizia per evitare tag <tv> o <?xml> annidati che rompono il file finale
+      let cleanXml = text
+        .replace(/<\?xml[^>]*\?>/gi, '')
+        .replace(/<tv[^>]*>/gi, '')
+        .replace(/<\/tv>/gi, '')
+        .trim();
+        
+      if (cleanXml) {
+        res.write(cleanXml + '\n');
       }
-      buffer = parts[parts.length - 1];
+    } catch (e) {
+      console.error('Errore fetch EPG:', url, e.message);
     }
-    if (buffer.trim()) res.write(buffer + '\n');
-    closed++;
-    if (closed === streams.length) res.end('</tv>');
   }
+  
+  res.end('</tv>');
 }

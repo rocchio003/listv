@@ -216,6 +216,17 @@ button.t:hover{filter:brightness(1.06)}
 </div>
 
 <h2>📅 Sorgenti EPG</h2>
+<div class="card type-epg" style="margin-bottom:14px">
+  <div class="row">
+    <label style="font-size:13.5px;color:var(--muted);cursor:pointer">
+      <input type="checkbox" id="useManualEpg" onchange="toggleManualEpg()">
+      Usa solo EPG manuali (ignora EPG automatici da Xtream/M3U)
+    </label>
+  </div>
+  <small style="display:block;margin-top:6px">
+    Se disattivato, verranno inclusi anche gli EPG integrati nelle liste Xtream (xmltv.php) e M3U (url-tvg).
+  </small>
+</div>
 <div id="epgList"></div>
 
 <h2>Aggiungi sorgente EPG</h2>

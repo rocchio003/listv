@@ -1,4 +1,9 @@
 import { epgUrls, getLong } from './_lib.js';
+import zlib from 'zlib';
+import { promisify } from 'util';
+
+const gunzip = promisify(zlib.gunzip);
+const inflate = promisify(zlib.inflate);
 
 export const config = { maxDuration: 60 };
 
@@ -25,20 +30,32 @@ async function getInlineCfg(token) {
   return JSON.parse(await new Response(new Blob([b64d(token)]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text());
 }
 
-// Funzione helper: legge la risposta e decomprime se è gzip
-async function readXmlResponse(r) {
-  const buffer = await r.arrayBuffer();
-  const bytes = new Uint8Array(buffer);
-  
-  // Magic number gzip: 0x1F 0x8B
-  if (bytes.length >= 2 && bytes[0] === 0x1F && bytes[1] === 0x8B) {
-    // È gzip, decomprimi
-    const stream = new Response(buffer).body.pipeThrough(new DecompressionStream('gzip'));
-    return await new Response(stream).text();
+async function fetchEpgContent(url) {
+  try {
+    const r = await getLong(url);
+    if (!r.ok) return null;
+    
+    const buffer = await r.arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+    
+    // 1. Rileva GZIP (magic number: 1f 8b)
+    if (bytes.length > 2 && bytes[0] === 0x1f && bytes[1] === 0x8b) {
+      const decompressed = await gunzip(buffer);
+      return new TextDecoder('utf-8').decode(decompressed);
+    }
+    
+    // 2. Rileva DEFLATE/ZLIB (magic number: 78 9c, 78 01, 78 da)
+    if (bytes.length > 1 && bytes[0] === 0x78 && [0x9c, 0x01, 0xda].includes(bytes[1])) {
+      const decompressed = await inflate(buffer);
+      return new TextDecoder('utf-8').decode(decompressed);
+    }
+    
+    // 3. Altrimenti è testo puro
+    return new TextDecoder('utf-8').decode(bytes);
+  } catch (e) {
+    console.error('Errore fetch EPG per', url, e);
+    return null;
   }
-  
-  // Altrimenti è testo puro (UTF-8)
-  return new TextDecoder('utf-8').decode(bytes);
 }
 
 export default async function handler(req, res) {
@@ -66,34 +83,14 @@ export default async function handler(req, res) {
   let activeStreams = urls.length;
   
   for (const url of urls) {
-    try {
-      const r = await getLong(url);
-      if (!r.ok) {
-        activeStreams--;
-        if (activeStreams === 0) res.end('</tv>\n');
-        continue;
-      }
-      
-      // Usa la funzione helper che gestisce sia gzip che testo puro
-      const text = await readXmlResponse(r);
-      
-      // Estraiamo solo i blocchi <channel> e <programme>
+    const text = await fetchEpgContent(url);
+    if (text) {
       const channels = text.match(/<channel[\s\S]*?<\/channel>/gi) || [];
       const programmes = text.match(/<programme[\s\S]*?<\/programme>/gi) || [];
-      
-      for (const ch of channels) {
-        res.write(ch + '\n');
-      }
-      for (const pr of programmes) {
-        res.write(pr + '\n');
-      }
-    } catch (e) {
-      console.error('EPG fetch error for', url, e);
+      for (const ch of channels) res.write(ch + '\n');
+      for (const pr of programmes) res.write(pr + '\n');
     }
-    
     activeStreams--;
-    if (activeStreams === 0) {
-      res.end('</tv>\n');
-    }
+    if (activeStreams === 0) res.end('</tv>\n');
   }
 }

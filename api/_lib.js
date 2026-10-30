@@ -161,6 +161,13 @@ export const getLong = (url) =>
 // Link EPG da unire: quelli inseriti a mano + xmltv.php delle liste Xtream + url-tvg nell'intestazione delle liste M3U
 export async function epgUrls(cfg) {
   const out = [...(cfg.g || [])];
+  
+  // Se useManualEpg è true, usa SOLO gli EPG manuali
+  if (cfg.useManualEpg) {
+    return [...new Set(out)];
+  }
+  
+  // Altrimenti, aggiungi anche gli EPG automatici dalle liste
   const act = (cfg.s || []).filter((s) => s.e !== 0);
   await Promise.all(
     act.map(async (s) => {

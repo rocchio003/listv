@@ -1,5 +1,5 @@
 // Legge le liste dal Gist dell'IPTV Manager e le converte nel formato di questa app.
-// Variabili su Vercel: GIST_ID (obbligatoria), GIST_TOKEN (consigliata), GIST_FILE (default iptv-lists.json)
+// Variabili su Vercel: GIST_ID (obbligatoria), GIST_TOKEN (consigliata), GIST_FILE (default iptv-manager.json)
 const T = (v) => String(v ?? '').trim();
 
 // Un link che punta a questo stesso sito (o a un altro deploy dell'app) non va importato: si includerebbe da solo
@@ -27,7 +27,7 @@ export default async function handler(req, res) {
     };
     const r = await fetch(`https://api.github.com/gists/${id}`, { headers: H });
     if (!r.ok) throw new Error('GitHub HTTP ' + r.status);
-    const name = process.env.GIST_FILE || 'iptv-lists.json';
+    const name = process.env.GIST_FILE || 'iptv-manager.json';
     const f = ((await r.json()).files || {})[name];
     if (!f) throw new Error(`File ${name} non trovato nel Gist`);
     const d = JSON.parse(f.truncated ? await (await fetch(f.raw_url, { headers: H })).text() : f.content);

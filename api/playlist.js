@@ -1,50 +1,18 @@
-import { collect, infParts, uh, applyOv } from './_lib.js';
+import { getCfg, collect, infParts, uh, applyOv, pickActive, testSource, xtStatus } from './_lib.js';
 
 export const config = { maxDuration: 60 };
-
-// Recupera configurazione dal database usando la chiave
-async function getUserCfg(key) {
-  const DB_URL = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
-  const DB_TOK = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
-  const DB_KEY = 'iptvhub:cfg';
-  
-  if (!DB_URL || !DB_TOK) throw new Error('Database non configurato');
-  
-  const r = await fetch(`${DB_URL}/get/${DB_KEY}`, { 
-    headers: { Authorization: 'Bearer ' + DB_TOK } 
-  });
-  const j = await r.json();
-  if (!j.result) throw new Error('Nessuna configurazione salvata');
-  
-  const cfg = JSON.parse(j.result);
-  if (!cfg.k || cfg.k !== key) throw new Error('Chiave non valida');
-  return cfg;
-}
-
-// Decodifica configurazione inline (metodo vecchio)
-async function getInlineCfg(token) {
-  const b64d = (s) => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0));
-  return JSON.parse(await new Response(new Blob([b64d(token)]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text());
-}
 
 export default async function handler(req, res) {
   const origin = `https://${req.headers.host}`;
   const q = new URL(req.url, origin).searchParams;
   let cfg;
-  
   try {
-    if (q.has('k')) {
-      cfg = await getUserCfg(q.get('k'));
-    } else if (q.has('c')) {
-      cfg = await getInlineCfg(q.get('c'));
-    } else {
-      throw new Error('Parametro mancante');
-    }
-  } catch (e) {
-    return res.status(400).send('Link non valido: ' + e.message);
+    cfg = await getCfg(q);
+  } catch {
+    return res.status(400).send('Link non valido');
   }
 
-  // Elenco gruppi
+  // Elenco gruppi di una sorgente (usato dal pannello)
   if (q.has('groups')) {
     try {
       const items = await collect(cfg.s[+q.get('groups')], origin);
@@ -56,7 +24,7 @@ export default async function handler(req, res) {
     }
   }
 
-  // Ricerca canali
+  // Ricerca canali di una sorgente per la modifica (massimo 60 risultati)
   if (q.has('channels')) {
     try {
       const items = await collect(cfg.s[+q.get('channels')], origin);
@@ -77,13 +45,20 @@ export default async function handler(req, res) {
     }
   }
 
-  // Playlist M3U
-  const act = cfg.s.filter((s) => s.e !== 0);
+  // Prova di una lista (tasto "Testa")
+  if (q.has('test')) return res.send(await testSource(cfg.s[0], origin));
+
+  // Stato degli account Xtream (pannello Pool)
+  if (q.has('status')) return res.json(await Promise.all(cfg.s.map((s) => xtStatus(s, q.get('fresh') === '1'))));
+
+  // Playlist unita, scritta a pezzi man mano che le liste rispondono
+  const { act, notes } = await pickActive(cfg);
   const ps = act.map((s) => collect(s, origin).then((r) => ({ r }), (e) => ({ err: String(e) })));
   res.setHeader('Content-Type', 'application/x-mpegURL; charset=utf-8');
   res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=300');
   const epg = `${origin}/epg.xml?${q.has('k') ? 'k=' + q.get('k') : 'c=' + q.get('c')}`;
   res.write(`#EXTM3U url-tvg="${epg}" x-tvg-url="${epg}"\n`);
+  if (notes) res.write(`# POOL: ${notes.replace(/\s+/g, ' ')}\n`);
   for (let i = 0; i < act.length; i++) {
     const o = await ps[i];
     if (o.err) {
@@ -95,15 +70,14 @@ export default async function handler(req, res) {
     const ov = s.o || {};
     const hasOv = Object.keys(ov).length > 0;
     const lab = String(s.n || '').replace(/"/g, "'");
-    
-    // MODIFICA QUI: il prefisso viene applicato SEMPRE, senza controllare s.pf
     const tag = (c) => {
       const inf = hasOv ? applyOv(c.inf, ov[uh(c.url)]) : c.inf;
+      if (!s.pf) return inf;
+      // Opzione "nome lista nei gruppi": group-title diventa "Lista | Gruppo"
       return /group-title="/.test(inf)
         ? inf.replace(/group-title="([^"]*)"/, (m, g) => `group-title="${lab} | ${g || 'Senza gruppo'}"`)
         : inf.replace(/^#EXTINF:(-?[\d.]+)/, (m, d) => `#EXTINF:${d} group-title="${lab} | Senza gruppo"`);
     };
-    
     let out = '';
     for (const c of o.r) if (!ex.has(c.group)) out += tag(c) + '\n' + c.extra + c.url + '\n';
     res.write(out);

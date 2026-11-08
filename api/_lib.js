@@ -5,6 +5,7 @@ const UA = 'Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like
 export const b64e = (u8) => btoa(String.fromCharCode(...u8)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 export const b64d = (s) => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0));
 
+// La configurazione viaggia dentro il link: JSON -> deflate -> base64url
 export async function decode(tok) {
   const st = new Blob([b64d(tok)]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
   return JSON.parse(await new Response(st).text());
@@ -32,6 +33,8 @@ export function parseM3U(txt) {
   return out;
 }
 
+// ---- Stalker ----
+// GET che ritorna JSON; se la risposta è vuota/non JSON, l'errore dice cosa è arrivato
 async function jget(url, headers, what, meta) {
   const r = await get(url, headers);
   if (meta) meta.cookies = (r.headers.getSetCookie ? r.headers.getSetCookie() : []).map((c) => c.split(';')[0]);
@@ -43,6 +46,7 @@ async function jget(url, headers, what, meta) {
   }
 }
 
+// Endpoint possibili del portale: li proviamo in ordine finché uno risponde
 const candidates = (u) => {
   u = u.trim().replace(/\/+$/, '');
   if (/\.php$/.test(u)) return [u];
@@ -63,6 +67,7 @@ export const sh = (mac, tok, ref, extra = []) => ({
 
 const hash = (alg, v) => createHash(alg).update(v).digest('hex');
 
+// Handshake + profilo da MAG250 (molti portali non consegnano i canali senza profilo)
 export async function stalkerLogin(url, mac) {
   const errs = [];
   const sn = hash('md5', mac).toUpperCase().slice(0, 13);
@@ -102,6 +107,7 @@ async function stalkerChannels(api, H) {
     err = e;
   }
   if (!data.length) {
+    // Alcuni portali non supportano get_all_channels: lista paginata
     for (let p = 1; p <= 300; p++) {
       const oj = await jget(
         `${api}?type=itv&action=get_ordered_list&genre=*&force_ch_link_check=&fav=0&sortby=number&hd=0&p=${p}&JsHttpRequest=1-xml`,
@@ -119,6 +125,7 @@ async function stalkerChannels(api, H) {
   return data;
 }
 
+// Sorgente {t,n,u,a,p,m,x,e} -> [{group, inf, extra, url}]
 export async function collect(s, origin) {
   if (s.t === 'stalker') {
     const { api, H } = await stalkerLogin(s.u, s.m);
@@ -147,19 +154,14 @@ export async function collect(s, origin) {
   return parseM3U(await r.text());
 }
 
+// ---- EPG ----
 export const getLong = (url) =>
   fetch(url, { headers: { 'User-Agent': 'VLC/3.0.20' }, signal: AbortSignal.timeout(55000) });
 
-// MODIFICA: Supporto per useManualEpg
+// Link EPG da unire: quelli inseriti a mano + xmltv.php delle liste Xtream + url-tvg nell'intestazione delle liste M3U
 export async function epgUrls(cfg) {
   const out = [...(cfg.g || [])];
-  
-  // Se il flag è attivo, restituisci SOLO gli EPG manuali
-  if (cfg.useManualEpg) {
-    return [...new Set(out)];
-  }
-
-  const act = (cfg.s || []).filter((s) => s.e !== 0);
+  const { act } = await pickActive(cfg);
   await Promise.all(
     act.map(async (s) => {
       try {
@@ -180,6 +182,7 @@ export async function epgUrls(cfg) {
   return [...new Set(out)];
 }
 
+// ---- Archivio condiviso (Upstash Redis collegato da Vercel) ----
 const DB_URL = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
 const DB_TOK = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
 const DB_KEY = 'iptvhub:cfg';
@@ -195,6 +198,7 @@ export async function saveCfg(cfg) {
   const r = await fetch(DB_URL, { method: 'POST', headers: dbAuth(), body: JSON.stringify(['SET', DB_KEY, JSON.stringify(cfg)]) });
   if (!r.ok) throw new Error('Salvataggio fallito');
 }
+// Configurazione da ?k=chiave (archivio) oppure da ?c=token (vecchi link, tutto dentro il link)
 export async function getCfg(q) {
   if (q.has('k')) {
     const cfg = await loadCfg();
@@ -204,8 +208,10 @@ export async function getCfg(q) {
   return decode(q.get('c'));
 }
 
+// ---- Modifica canali (override per canale, chiave = hash dell'URL dello stream) ----
 export const uh = (url) => createHash('sha1').update(url).digest('hex').slice(0, 12);
 
+// Divide #EXTINF in intestazione e nome (prima virgola fuori dalle virgolette)
 function splitInf(inf) {
   let q = false;
   for (let i = 0; i < inf.length; i++) {
@@ -214,16 +220,17 @@ function splitInf(inf) {
   }
   return [inf, ''];
 }
-const attr = (h, k) => (h.match(new RegExp(`(?:^|s)${k}="([^"]*)"`)) || [])[1] || '';
+const attr = (h, k) => (h.match(new RegExp(`(?:^|\\s)${k}="([^"]*)"`)) || [])[1] || '';
 export function infParts(inf) {
   const [h, name] = splitInf(inf);
   return { name: name.trim(), id: attr(h, 'tvg-id'), logo: attr(h, 'tvg-logo') };
 }
 const setAttr = (h, k, v) => {
-  const re = new RegExp(`(s)${k}="[^"]*"`);
+  const re = new RegExp(`(\\s)${k}="[^"]*"`);
   const kv = `${k}="${String(v).replace(/"/g, "'")}"`;
   return re.test(h) ? h.replace(re, (m, sp) => sp + kv) : h.replace(/^(#EXTINF:\S+)/, (m, d) => `${d} ${kv}`);
 };
+// o = {n: nome, i: tvg-id, g: gruppo, l: logo}: solo i campi presenti vengono sostituiti
 export function applyOv(inf, o) {
   if (!o) return inf;
   let [h, name] = splitInf(inf);
@@ -231,4 +238,76 @@ export function applyOv(inf, o) {
   if (o.l !== undefined) h = setAttr(h, 'tvg-logo', o.l);
   if (o.g !== undefined) h = setAttr(h, 'group-title', o.g);
   return h + ',' + (o.n !== undefined ? o.n : name);
+}
+
+// ---- Pool Xtream: stato degli account e scelta delle liste disponibili ----
+const getT = (url, ms) => fetch(url, { headers: { 'User-Agent': 'VLC/3.0.20' }, signal: AbortSignal.timeout(ms) });
+const stCache = new Map();
+const fmtD = (ms) => {
+  const d = new Date(ms);
+  return `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}/${d.getUTCFullYear()}`;
+};
+
+// Stato di un account Xtream: ok = attivo, non scaduto e con almeno una connessione libera
+export async function xtStatus(s, fresh) {
+  const key = `${s.u}|${s.a}`;
+  const hit = stCache.get(key);
+  if (!fresh && hit && Date.now() - hit.t < 90000) return hit.v;
+  let v;
+  try {
+    const base = s.u.trim().replace(/\/+$/, '');
+    const r = await getT(`${base}/player_api.php?username=${encodeURIComponent(s.a)}&password=${encodeURIComponent(s.p)}`, 8000);
+    const u = (await r.json()).user_info;
+    if (!u || +u.auth !== 1) {
+      v = { ok: false, why: 'credenziali non valide' };
+    } else {
+      const exp = +u.exp_date ? +u.exp_date * 1000 : null;
+      const cons = +u.active_cons || 0, max = +u.max_connections || 1;
+      const st = String(u.status || 'Active').toLowerCase();
+      v = { ok: true, exp, cons, max };
+      if (st !== 'active') Object.assign(v, { ok: false, why: { expired: 'scaduta', disabled: 'disattivata', banned: 'bloccata' }[st] || 'account ' + st });
+      else if (exp && exp < Date.now()) Object.assign(v, { ok: false, why: 'scaduta' });
+      else if (cons >= max) Object.assign(v, { ok: false, why: 'occupata' });
+    }
+  } catch {
+    v = { ok: false, why: 'offline' };
+  }
+  stCache.set(key, { t: Date.now(), v });
+  return v;
+}
+
+// Liste da usare: tutte quelle attive, ma delle liste Xtream "nel pool" solo le prime n disponibili (ordine della lista)
+export async function pickActive(cfg, fresh) {
+  const act = (cfg.s || []).filter((s) => s.e !== 0);
+  const pool = act.filter((s) => s.t === 'xtream' && s.pl);
+  if (!pool.length) return { act, notes: '' };
+  const st = await Promise.all(pool.map((s) => xtStatus(s, fresh)));
+  const use = new Set(), skip = [];
+  pool.forEach((s, i) => {
+    if (!st[i].ok) skip.push(`${s.n}: ${st[i].why}`);
+    else if (use.size < (cfg.n || 3)) use.add(s);
+    else skip.push(`${s.n}: libera (riserva)`);
+  });
+  return {
+    act: act.filter((s) => !(s.t === 'xtream' && s.pl) || use.has(s)),
+    notes: `usate ${[...use].map((s) => s.n).join(', ') || 'nessuna'} | ${skip.join(' | ')}`,
+  };
+}
+
+// Prova di una lista (tasto "Testa"): ritorna un messaggio leggibile
+export async function testSource(s, origin) {
+  if (!s) return '❌ Nessuna lista da provare';
+  if (s.t === 'xtream') {
+    const v = await xtStatus(s, true);
+    const d = v.exp ? fmtD(v.exp) : null;
+    if (v.ok) return `✅ Account attivo${d ? ', scade il ' + d : ''}, connessioni ${v.cons}/${v.max}`;
+    return `⛔ ${v.why}${d ? ' (scadenza ' + d + ')' : ''}${v.max ? `, connessioni ${v.cons}/${v.max}` : ''}`;
+  }
+  try {
+    const items = await collect(s, origin);
+    const g = new Set(items.map((i) => i.group));
+    return items.length ? `✅ ${items.length} canali in ${g.size} gruppi` : '⚠️ Risposta valida ma senza canali';
+  } catch (e) {
+    return '❌ ' + String(e.message || e).replace(/^fetch failed$/, 'server non raggiungibile').slice(0, 300);
+  }
 }

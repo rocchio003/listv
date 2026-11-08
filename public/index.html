@@ -5,190 +5,55 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>IPTV Hub</title>
 <style>
-:root{
-  color-scheme:dark;
-  --bg:#0c0d10;--card:#15171c;--card2:#1b1e24;--line:#262a32;
-  --text:#f2f3f5;--muted:#9aa2b1;--faint:#6d7482;
-  --mint:#00e5a0;--amber:#ffb020;--coral:#ff6b5e;--violet:#a78bfa;--sky:#38bdf8;
-  --r:22px;
-  --b:#101216;--c:#15171c;--t:#f2f3f5;--a:#00e5a0;--m:#9aa2b1;
-}
+:root{color-scheme:dark light;--b:#14161a;--c:#1e2127;--t:#e8eaed;--a:#4f8cff;--m:#8a919c}
+@media(prefers-color-scheme:light){:root{--b:#f4f5f7;--c:#fff;--t:#1a1c20;--m:#6b7280}}
 *{box-sizing:border-box}
-html,body{margin:0}
-body{
-  color:var(--text);padding:30px 18px 70px;
-  font:15px/1.55 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-  -webkit-font-smoothing:antialiased;
-  background:
-    radial-gradient(60% 40% at 90% -5%,rgba(255,176,32,.14),transparent 60%),
-    radial-gradient(50% 40% at 5% 0%,rgba(0,229,160,.12),transparent 60%),
-    var(--bg);
-}
-.wrap{max-width:900px;margin:0 auto}
-
-.top{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:22px;flex-wrap:wrap}
-.brand{display:flex;align-items:center;gap:14px}
-.logo{width:52px;height:52px;border-radius:16px;display:grid;place-items:center;font-size:26px;flex:none;
-  background:linear-gradient(140deg,var(--amber),var(--coral));box-shadow:0 12px 30px rgba(255,107,94,.35)}
-h1{font-size:26px;margin:0;letter-spacing:-.03em;font-weight:750}
-.brand p{margin:3px 0 0;font-size:13.5px;color:var(--muted)}
-h2{font-size:19px;margin:34px 0 12px;letter-spacing:-.02em;font-weight:700}
-small{color:var(--muted);font-size:12.5px}
-
-.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:20px;margin:10px 0;position:relative}
-.card.type-m3u{box-shadow:inset 0 0 0 1px rgba(56,189,248,.22)}
-.card.type-xtream{box-shadow:inset 0 0 0 1px rgba(0,229,160,.22)}
-.card.type-stalker{box-shadow:inset 0 0 0 1px rgba(255,176,32,.22)}
-.card.type-epg{box-shadow:inset 0 0 0 1px rgba(167,139,250,.22)}
-.card.tint-violet{box-shadow:inset 0 0 0 1px rgba(167,139,250,.22)}
-.card.tint-sky{box-shadow:inset 0 0 0 1px rgba(56,189,248,.22)}
-.kicker{display:inline-flex;align-items:center;gap:7px;font-size:11.5px;letter-spacing:.14em;
-  text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:10px}
-.kicker .em{font-size:14px;letter-spacing:0}
-.muted{color:var(--muted);font-size:13.5px}
-
-.card > b{font-size:15px;font-weight:700;letter-spacing:-.01em}
-.card > b::before{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:10px;
-  margin-right:9px;vertical-align:-7px;font-size:15px;font-style:normal}
-.card.type-m3u > b::before{content:"🎵";background:rgba(56,189,248,.15);color:var(--sky)}
-.card.type-xtream > b::before{content:"⚽";background:rgba(0,229,160,.15);color:var(--mint)}
-.card.type-stalker > b::before{content:"";background:rgba(255,176,32,.15);color:var(--amber)}
-.card.type-epg > b::before{content:"📅";background:rgba(167,139,250,.15);color:var(--violet)}
-.card > b + small{font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;
-  background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:6px;padding:2px 7px;color:var(--muted)}
-.card > b + small + small{background:none;border:0;padding:0;font-weight:400;margin-left:6px}
-
-input,select{width:100%;font:inherit;font-size:14.5px;color:var(--text);background:var(--card2);
-  border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin:7px 0;outline:none;
-  transition:border-color .15s,box-shadow .15s}
-input::placeholder{color:var(--faint)}
-input:focus,select:focus{border-color:var(--mint);box-shadow:0 0 0 4px rgba(0,229,160,.15)}
-select{appearance:none;
-  background-image:linear-gradient(45deg,transparent 50%,#9aa2b1 50%),linear-gradient(135deg,#9aa2b1 50%,transparent 50%);
-  background-position:calc(100% - 20px) calc(50% + 2px),calc(100% - 15px) calc(50% + 2px);
-  background-size:5px 5px,5px 5px;background-repeat:no-repeat}
-input.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13.5px}
-input[type="checkbox"]{width:auto;height:auto;margin:0;padding:0;border:0;background:none;
-  box-shadow:none;accent-color:var(--mint)}
-[hidden]{display:none}
-
-button{display:inline-flex;align-items:center;justify-content:center;gap:7px;font:inherit;font-size:14px;
-  font-weight:650;border:0;border-radius:14px;padding:11px 18px;margin:0;cursor:pointer;color:#0c0d10;
-  background:linear-gradient(135deg,var(--mint),#38f9c4);transition:filter .15s,transform .12s}
-button:hover{filter:brightness(1.07);transform:translateY(-1px)}
-button:active{transform:translateY(0)}
-button:disabled{opacity:.45;cursor:not-allowed;transform:none;filter:none}
-button.s{background:var(--card2);color:var(--text);border:1px solid var(--line);font-size:13px;
-  font-weight:600;padding:9px 13px;border-radius:12px}
-button.s:hover{background:#23262d;filter:none}
-button.t{background:linear-gradient(135deg,var(--amber),var(--coral));color:#241109}
-button.t:hover{filter:brightness(1.06)}
-
-.row{display:flex;flex-wrap:wrap;align-items:center;gap:9px;margin-top:12px}
-.row label{display:flex;align-items:center;gap:9px;font-size:13.5px;color:var(--muted);cursor:pointer}
-.row input{width:auto}
-.row label input[type="checkbox"]{
-  appearance:none;-webkit-appearance:none;width:34px;height:20px;border-radius:999px;cursor:pointer;
-  background-color:#2b2f38;border:0;padding:0;margin:0;flex:none;
-  background-image:radial-gradient(circle at 10px 10px,#8b93a3 6px,transparent 7px);
-  background-repeat:no-repeat;transition:background-color .2s,background-image .2s,box-shadow .2s}
-.row label input[type="checkbox"]:checked{
-  background-color:rgba(0,229,160,.3);
-  background-image:radial-gradient(circle at 24px 10px,var(--mint) 6px,transparent 7px);
-  box-shadow:0 0 12px rgba(0,229,160,.35)}
-
-.meta{display:block;margin-top:10px;font-size:12.5px;color:var(--muted)}
-.linkbox{background:var(--card2);border:1px solid var(--line);border-radius:16px;padding:4px 16px}
-.linkbox input{margin:0;background:none;border:0;box-shadow:none;padding:11px 0}
-.linkbox input:focus{border:0;box-shadow:none}
-.sync-status{font-size:12.5px;margin-top:11px;min-height:1em}
-
-.bento{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:4px}
-.bento .card{margin:0}
-
-.epg-url{display:block;margin-top:11px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
-  font-size:12.5px;color:var(--muted);background:#101216;border:1px dashed var(--line);
-  border-radius:12px;padding:10px 13px;word-break:break-all;cursor:pointer}
-.epg-url:hover{color:var(--violet);border-color:rgba(167,139,250,.5);border-style:solid}
-.grp{max-height:260px;overflow:auto;margin-top:10px;color:var(--text);background:var(--card2);
-  border:1px solid var(--line);border-radius:14px;padding:6px 14px}
-.grp label{display:flex;gap:10px;align-items:center;padding:8px 0;font-size:13.5px;cursor:pointer;
-  border-bottom:1px solid rgba(255,255,255,.05)}
-.grp label:last-child{border-bottom:0}
-.grp input[type="checkbox"]{width:16px;height:16px;flex:none}
-.grp small{color:var(--faint)}
-.grp-actions{display:flex;gap:10px;font-size:12.5px;margin:10px 0}
-.grp-actions a{color:var(--mint);cursor:pointer;text-decoration:none;font-weight:600}
-.grp-actions a:hover{text-decoration:underline}
-.test-result{margin-top:13px;padding:13px 15px;border-radius:14px;font-size:13px;white-space:pre-wrap;
-  word-break:break-all;max-height:220px;overflow:auto;background:var(--card2);border:1px solid var(--line);
-  color:var(--muted);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
-.test-result.ok{background:rgba(0,229,160,.08);color:#7cf3d3;border-color:rgba(0,229,160,.35)}
-.test-result.err{background:rgba(255,107,94,.1);color:#ffa79e;border-color:rgba(255,107,94,.4)}
-
-@media(max-width:740px){
-  body{padding:22px 14px 60px}
-  .bento{grid-template-columns:1fr}
-  h1{font-size:22px}
-  .card{padding:16px}
-}
+body{margin:0 auto;max-width:720px;padding:14px;font:15px system-ui,sans-serif;background:var(--b);color:var(--t)}
+h1{font-size:20px;margin:6px 0 12px}h2{font-size:16px;margin:20px 0 8px}
+.card{background:var(--c);border-radius:12px;padding:12px;margin:10px 0}
+input,select,button{font:inherit;color:inherit;background:transparent;border:1px solid #8884;border-radius:8px;padding:9px 10px;margin:3px 0;width:100%}
+button{width:auto;cursor:pointer;background:var(--a);border:0;color:#fff;margin-right:6px}
+button.s{background:#8883;color:var(--t)}
+.row{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:6px}
+.row label{display:flex;align-items:center;gap:6px;margin-right:8px}.row input{width:auto}
+small{color:var(--m)}
+.grp{max-height:260px;overflow:auto;margin-top:6px}
+.grp label{display:flex;gap:8px;align-items:center;padding:5px 0}.grp input{width:auto;margin:0;flex:none}
+.gn{flex:1;overflow-wrap:anywhere;color:var(--t)}
 </style>
 </head>
 <body>
-<div class="wrap">
-<header class="top">
-  <div class="brand">
-    <div class="logo">📺</div>
-    <div>
-      <h1>IPTV Hub</h1>
-      <p>Playlist, EPG e link breve — tutto in un posto</p>
-    </div>
-  </div>
-</header>
+<h1>📺 IPTV Hub</h1>
+<small id="st"></small> <a href="#" style="font-size:12px" onclick="localStorage.removeItem('p');location.reload();return false">cambia password</a> · <a href="#" style="font-size:12px" onclick="gsync(false);return false">sincronizza Gist</a><br><small id="gs"></small>
 
-<div class="card type-m3u">
-  <span class="kicker"><span class="em">🔗</span> Link per il player</span>
-  <div class="linkbox">
-    <input class="mono" id="link" readonly onclick="this.select()">
-  </div>
-  <small id="len" class="meta"></small>
+<div class="card">
+  <small>Link unico per il player (contiene tutta la configurazione)</small>
+  <input id="link" readonly onclick="this.select()">
+  <small id="len"></small>
   <div class="row">
-    <button onclick="navigator.clipboard.writeText($('link').value);this.textContent='Copiato ✓'">📋 Copia link</button>
-    <button class="s" onclick="$('link').value&&window.open($('link').value)">↗ Apri / testa</button>
+    <button onclick="navigator.clipboard.writeText($('link').value);this.textContent='Copiato ✓'">Copia link</button>
+    <button class="s" onclick="$('link').value&&window.open($('link').value)">Apri / testa</button>
   </div>
 </div>
 
-<div class="bento">
-<div class="card tint-violet">
-  <span class="kicker"><span class="em">🔐</span> Sincronizzazione e link breve</span>
-  <p class="muted" style="margin:0">Salva i dati nel cloud per ottenere un <b>link breve</b> e usarlo su più dispositivi.</p>
-  <div class="row">
-    <input id="syncKey" placeholder="La tua chiave di sincronizzazione" style="flex:1">
-    <button class="sync" onclick="loadFromCloud()">Carica</button>
-    <button class="sync" onclick="saveToCloud()">Salva</button>
-  </div>
-  <div class="row">
-    <button class="s" onclick="generateKey()">Genera nuova chiave</button>
-  </div>
-  <div class="sync-status" id="syncStatus"></div>
+<div class="card">
+  <small>Link EPG unito (guida TV): è già indicato nella playlist, ma puoi incollarlo anche nelle impostazioni EPG del player</small>
+  <input id="epg" readonly onclick="this.select()">
+  <div class="row"><button onclick="navigator.clipboard.writeText($('epg').value);this.textContent='Copiato ✓'">Copia link EPG</button></div>
 </div>
 
-<div class="card tint-sky">
-  <span class="kicker"><span class="em">⚡</span> Proxy Cloudflare <span style="letter-spacing:.02em;text-transform:none;font-weight:500">(opzionale)</span></span>
-  <p class="muted" style="margin:0">Usa un proxy per testare link altrimenti bloccati (CORS, IP Vercel).</p>
-  <input id="proxyUrl" class="mono" placeholder="URL Worker (es. https://iptv-proxy.tuo-nome.workers.dev)">
-  <div class="row">
-    <label><input type="checkbox" id="useProxy" onchange="toggleProxy()"> Usa proxy per i test</label>
-    <button class="s" onclick="testProxy()">Testa proxy</button>
-  </div>
-</div>
+<h2>Pool Xtream</h2>
+<div class="card">
+  <small>Le liste Xtream con “nel pool” spuntato vengono controllate a ogni aggiornamento: nella playlist entrano le prime disponibili (account attivo, non scaduto, con una connessione libera), nell'ordine in cui sono elencate qui sotto.</small>
+  <div class="row"><label>Quante usarne <input id="pn" type="number" min="1" max="20" style="width:70px" onchange="D.n=Math.max(1,+this.value||3);upd()"></label><button class="s" onclick="chk()">Controlla stato</button></div>
+  <div id="ps"></div>
 </div>
 
-<h2>Liste canali</h2>
+<h2>Liste</h2>
 <div id="list"></div>
 
 <h2>Aggiungi lista</h2>
-<div class="card type-m3u">
+<div class="card">
   <select id="t" onchange="ty()">
     <option value="m3u">M3U (URL)</option>
     <option value="xtream">Xtream Codes</option>
@@ -199,43 +64,23 @@ button.t:hover{filter:brightness(1.06)}
   <input id="us" placeholder="Username" hidden>
   <input id="pw" placeholder="Password" hidden>
   <input id="m" placeholder="MAC (00:1A:79:...)" hidden>
-  <div class="row">
-    <button onclick="add()">+ Aggiungi</button>
-    <button class="t" id="testBtn" onclick="testLink()">Testa link</button>
-  </div>
-  <div id="testResult"></div>
+  <button onclick="add()">+ Aggiungi</button>
+  <button class="s" onclick="tstNew()">Testa</button>
+  <small id="tn" style="display:block"></small>
 </div>
 
-<h2>📅 Sorgenti EPG</h2>
-<div class="card type-epg" style="margin-bottom:14px">
-  <div class="row">
-    <label style="font-size:13.5px;color:var(--muted);cursor:pointer">
-      <input type="checkbox" id="useManualEpg" onchange="toggleManualEpg()">
-      Usa solo EPG manuali (ignora EPG automatici da Xtream/M3U)
-    </label>
-  </div>
-  <small style="display:block;margin-top:6px">
-    Se disattivato, verranno inclusi anche gli EPG integrati nelle liste Xtream (xmltv.php) e M3U (url-tvg).
-  </small>
-</div>
-<div id="epgList"></div>
-
-<h2>Aggiungi sorgente EPG</h2>
-<div class="card type-epg">
-  <input id="epgN" placeholder="Nome (opzionale)">
-  <input id="epgU" placeholder="URL XMLTV EPG">
-  <div class="row">
-    <button onclick="addEpg()">+ Aggiungi EPG</button>
-    <button class="t" id="testEpgBtn" onclick="testEpg()">Testa EPG</button>
-  </div>
-  <div id="testEpgResult"></div>
+<h2>Sorgenti EPG</h2>
+<div class="card">
+  <small>Aggiungi link XMLTV (anche .xml.gz): vengono uniti in un solo EPG, insieme a quelli delle tue liste Xtream e M3U.</small>
+  <div id="eg"></div>
+  <input id="ei" placeholder="https://.../epg.xml.gz">
+  <button onclick="addEpg()">+ Aggiungi EPG</button>
 </div>
 
-<h2>Modifica un link esistente</h2>
-<div class="card type-m3u">
-  <input id="imp" placeholder="Incolla qui un link già generato (?c=... o ?k=...)">
-  <div class="row"><button class="s" onclick="imp()">Carica configurazione</button></div>
-</div>
+<h2>Importa da un link vecchio</h2>
+<div class="card">
+  <input id="imp" placeholder="Incolla qui un link già generato">
+  <button class="s" onclick="imp()">Carica configurazione</button>
 </div>
 
 <script>
@@ -248,421 +93,272 @@ const enc = async (o) =>
 const dec = async (t) =>
   JSON.parse(await new Response(new Blob([b64d(t)]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text());
 
-let D = { s: [], g: [] };
-let syncKey = localStorage.syncKey || '';
-let proxyUrl = localStorage.proxyUrl || '';
-let useProxy = localStorage.useProxy === 'true';
-let useManualEpg = localStorage.useManualEpg === 'true';
+let D = { s: [] };
+try { D = JSON.parse(localStorage.cfg) || D; } catch {}
 
-try { 
-  const saved = JSON.parse(localStorage.cfg);
-  if (saved) { 
-    D.s = saved.s || []; 
-    D.g = saved.g || []; 
-    if (saved.useManualEpg !== undefined) useManualEpg = saved.useManualEpg;
-  }
-} catch {}
-
-if (syncKey) $('syncKey').value = syncKey;
-if (proxyUrl) $('proxyUrl').value = proxyUrl;
-if (useProxy) $('useProxy').checked = true;
-if (useManualEpg) $('useManualEpg').checked = true;
-
-function toggleProxy() {
-  useProxy = $('useProxy').checked;
-  localStorage.useProxy = useProxy;
-  showStatus(useProxy ? 'Proxy attivato per i test' : 'Proxy disattivato', 'loading');
-}
-
-function toggleManualEpg() {
-  useManualEpg = $('useManualEpg').checked;
-  localStorage.useManualEpg = useManualEpg;
-  upd();
-}
-
-async function testProxy() {
-  const url = $('proxyUrl').value.trim();
-  if (!url) return alert('Inserisci l\'URL del Worker');
-  
-  try {
-    const testUrl = url.includes('/test') ? url + '?url=https://httpbin.org/get&type=m3u' : url + '/test?url=https://httpbin.org/get&type=m3u';
-    const r = await fetch(testUrl);
-    if (r.ok) {
-      const data = await r.json();
-      alert('✅ Proxy funzionante!\nStatus: ' + data.status + '\nIP proxy: ' + (data.proxyIp || 'ok'));
-      proxyUrl = url;
-      localStorage.proxyUrl = url;
-      showStatus('Proxy salvato e funzionante', 'success');
-    } else {
-      alert('❌ Proxy non raggiungibile: ' + r.status);
-    }
-  } catch (e) {
-    alert('❌ Errore: ' + e.message);
-  }
-}
+let P = localStorage.p || '', cloud = false, saveT;
+const api = (m, b) => fetch('/api/config', { method: m, headers: { 'x-admin': P, 'content-type': 'application/json' }, body: b && JSON.stringify(b) });
+const setSt = (t) => ($('st').textContent = t);
 
 async function upd() {
-  try { localStorage.cfg = JSON.stringify({ s: D.s, g: D.g, useManualEpg }); } catch {}
-  const hasSources = D.s.length > 0 || D.g.length > 0;
-  let l = '';
-  if (hasSources) {
-    const cfgData = { s: D.s, g: D.g, useManualEpg };
-    if (syncKey) l = location.origin + '/playlist.m3u?k=' + syncKey;
-    else l = location.origin + '/playlist.m3u?c=' + (await enc(cfgData));
+  try { localStorage.cfg = JSON.stringify(D); } catch {}
+  const has = D.s.length || (D.g || []).length;
+  let par, note = '';
+  if (cloud && D.k) {
+    par = 'k=' + D.k;
+    note = '☁️ Il link resta sempre lo stesso: le modifiche arrivano al player senza cambiarlo.';
+    setSt('☁️ Salvataggio…');
+    clearTimeout(saveT);
+    saveT = setTimeout(async () => {
+      try {
+        const r = await api('PUT', { s: D.s, g: D.g || [], n: D.n || 3 });
+        setSt(r.ok ? '☁️ Sincronizzato' : '⚠️ Salvataggio non riuscito');
+      } catch { setSt('⚠️ Salvataggio non riuscito'); }
+    }, 600);
+  } else {
+    par = 'c=' + (await enc(D));
   }
+  const l = D.s.length ? location.origin + '/playlist.m3u?' + par : '';
   $('link').value = l;
-  const info = [];
-  if (D.s.length) info.push(`${D.s.length} liste`);
-  if (D.g.length) info.push(`${D.g.length} EPG`);
-  if (l) {
-    if (syncKey) $('len').textContent = '🔗 Link breve (sincronizzato) · ' + info.join(', ');
-    else $('len').textContent = l.length + ' caratteri · ' + info.join(', ') + (l.length > 2000 ? ' ⚠️ link lungo: clicca "Salva" per accorciarlo' : '');
-  } else $('len').textContent = '';
+  $('epg').value = has ? location.origin + '/epg.xml?' + par : '';
+  $('len').textContent = cloud ? note : l ? l.length + ' caratteri' + (l.length > 2000 ? ' ⚠️ link lungo: alcuni player potrebbero rifiutarlo, escludi meno gruppi o usa meno liste' : '') : '';
+}
+
+// Unisce le liste del Gist (riconosciute dall'id) con quelle dell'app: i dati dell'app (gruppi, pool, ordine, correzioni) restano
+function mergeGist(gs, gg) {
+  const r = { add: 0, upd: 0, del: 0, epg: 0 };
+  const have = new Map(D.s.filter((s) => s.gid).map((s) => [s.gid, s]));
+  for (const n of gs) {
+    const o = have.get(n.gid);
+    if (o) {
+      let ch = false;
+      for (const k of ['n', 'u', 'a', 'p', 'm']) if (n[k] !== undefined && o[k] !== n[k]) { o[k] = n[k]; ch = true; }
+      if (ch) r.upd++;
+    } else {
+      D.s.push({ gid: n.gid, t: n.t, n: n.n, u: n.u, ...(n.a !== undefined && { a: n.a, p: n.p }), ...(n.m !== undefined && { m: n.m }), pl: n.pl, x: [], e: n.off ? 0 : 1 });
+      r.add++;
+    }
+  }
+  if (gs.length) { // le liste arrivate dal Gist e poi cancellate dal Gist vengono tolte; quelle aggiunte a mano restano
+    const ids = new Set(gs.map((n) => n.gid)), before = D.s.length;
+    D.s = D.s.filter((s) => !s.gid || ids.has(s.gid));
+    r.del = before - D.s.length;
+  }
+  D.g = D.g || [];
+  for (const u of gg) if (!D.g.includes(u)) { D.g.push(u); r.epg++; }
+  return r;
+}
+async function gsync(auto) {
+  if (!cloud) { if (!auto) alert('Serve la sincronizzazione ☁️ (database collegato e accesso con la password).'); return; }
+  const g = $('gs');
+  try {
+    const r = await fetch('/api/gist', { headers: { 'x-admin': P } });
+    if (r.status === 204) { if (!auto) g.textContent = 'Gist non configurato: aggiungi GIST_ID su Vercel.'; return; }
+    if (!r.ok) { g.textContent = '⚠️ Gist: ' + (await r.text()); return; }
+    const j = await r.json();
+    const m = mergeGist(j.s, j.g);
+    g.textContent = `🔄 Gist: ${m.add} nuove, ${m.upd} aggiornate, ${m.del} rimosse` + (m.epg ? `, ${m.epg} EPG` : '') +
+      (j.skipped.length ? ` · non importate perché sono questo stesso sito: ${j.skipped.join(', ')}` : '');
+    if (!auto) render();
+  } catch { g.textContent = '⚠️ Gist non raggiungibile'; }
+}
+
+async function boot() {
+  const local = D;
+  if (!P) P = prompt('Password admin (la stessa di ADMIN_PASSWORD su Vercel). Annulla = solo su questo dispositivo') || '';
+  if (P) {
+    try {
+      const r = await api('GET');
+      if (r.ok) {
+        D = (await r.json()).cfg;
+        D.s = D.s || []; D.g = D.g || []; D.n = D.n || 3;
+        cloud = true;
+        localStorage.p = P;
+        if (!D.s.length && (local.s || []).length && confirm('Importare le liste salvate su questo dispositivo?')) D = { ...local, k: D.k };
+        setSt('☁️ Sincronizzato');
+        await gsync(true);
+      } else {
+        if (r.status === 401) { localStorage.removeItem('p'); P = ''; }
+        setSt('⚠️ ' + (await r.text()) + ' — modalità locale');
+      }
+    } catch { setSt('⚠️ Server non raggiungibile — modalità locale'); }
+  }
+  if (!cloud && !$('st').textContent) setSt('💾 Solo su questo dispositivo');
+  render();
 }
 
 function render() {
   $('list').innerHTML = D.s.map((s, i) => `
-    <div class="card type-${s.t || 'm3u'}">
-      <b>${esc(s.n)}</b> <small style="text-transform:uppercase;opacity:0.8">${s.t}</small> <small>${(s.x || []).length ? ' · ' + s.x.length + ' gruppi esclusi' : ''}</small>
+    <div class="card">
+      <b>${esc(s.n)}</b> <small>${s.t}${(s.x || []).length ? ' · ' + s.x.length + ' gruppi esclusi' : ''}${Object.keys(s.o || {}).length ? ' · ' + Object.keys(s.o).length + ' canali modificati' : ''}</small>
       <div class="row">
         <label><input type="checkbox" ${s.e !== 0 ? 'checked' : ''} onchange="D.s[${i}].e=this.checked?1:0;upd()">attiva</label>
-        <button class="s" onclick="moveUp(${i})" ${i === 0 ? 'disabled style="opacity:0.3"' : ''}>↑</button>
-        <button class="s" onclick="moveDown(${i})" ${i === D.s.length - 1 ? 'disabled style="opacity:0.3"' : ''}>↓</button>
+        <label><input type="checkbox" ${s.pf ? 'checked' : ''} onchange="D.s[${i}].pf=this.checked?1:0;upd()">nome lista nei gruppi</label>
+        ${s.t === 'xtream' ? `<label><input type="checkbox" ${s.pl ? 'checked' : ''} onchange="D.s[${i}].pl=this.checked?1:0;upd()">nel pool</label>` : ''}
+        <button class="s" onclick="mv(${i},-1)">↑</button>
+        <button class="s" onclick="mv(${i},1)">↓</button>
+        <button class="s" onclick="tst(${i})">Testa</button>
+        <button class="s" onclick="edit(${i})">Modifica</button>
         <button class="s" onclick="groups(${i})">Gruppi</button>
+        <button class="s" onclick="chans(${i})">Canali</button>
         <button class="s" onclick="del(${i})">Elimina</button>
       </div>
-      <div id="g${i}" data-state="closed"></div>
+      <small id="t${i}" style="display:block"></small><div id="e${i}"></div><div id="g${i}"></div><div id="c${i}"></div>
     </div>`).join('') || '<small>Nessuna lista ancora.</small>';
-  
-  $('epgList').innerHTML = D.g.map((g, i) => `
-    <div class="card type-epg">
-      ${g.n ? `<b>${esc(g.n)}</b> <small style="text-transform:uppercase;opacity:0.8">EPG</small>` : `<small style="text-transform:uppercase;opacity:0.8">EPG</small>`}
-      <div class="row">
-        <label><input type="checkbox" ${g.e !== 0 ? 'checked' : ''} onchange="D.g[${i}].e=this.checked?1:0;upd()">attiva</label>
-        <button class="s" onclick="delEpg(${i})">Elimina</button>
-      </div>
-      <span class="epg-url" onclick="navigator.clipboard.writeText('${esc(g.u)}');alert('URL copiato!')" title="Clicca per copiare">${esc(g.u)}</span>
-    </div>`).join('') || '<small>Nessuna sorgente EPG ancora.</small>';
-  
+  $('eg').innerHTML = (D.g || []).map((g, i) => `<div class="row"><small style="flex:1;word-break:break-all">${esc(g)}</small><button class="s" onclick="D.g.splice(${i},1);render()">✕</button></div>`).join('');
+  $('pn').value = D.n || 3;
   upd();
 }
 
 async function groups(i) {
   const s = D.s[i], el = $('g' + i);
-  if (el.dataset.state === 'open') { el.innerHTML = ''; el.dataset.state = 'closed'; return; }
-  if (el.dataset.state === 'loading') return;
-
-  el.dataset.state = 'loading';
   el.textContent = 'Carico i gruppi…';
-
-  try {
-    const r = await fetch(`/api/playlist?groups=${i}&c=${await enc({s: D.s, g: D.g, useManualEpg})}`);
-    if (!r.ok) { el.textContent = 'Errore: ' + (await r.text()); el.dataset.state = 'closed'; return; }
-    
-    const g = await r.json();
-    s.x = s.x || [];
-    let sourceLink = s.u;
-    if (s.t === 'xtream' && s.a && s.p) sourceLink = `${s.u.replace(/\/+$/, '')}/get.php?username=${encodeURIComponent(s.a)}&password=${encodeURIComponent(s.p)}&type=m3u_plus&output=ts`;
-    else if (s.t === 'stalker' && s.m) sourceLink = `Portale: ${s.u} | MAC: ${s.m}`;
-
-    const groupNames = Object.keys(g).sort();
-    
-    el.innerHTML = `
-      <div style="margin-bottom:8px">
-        <small>Link sorgente completo:</small>
-        <input readonly value="${esc(sourceLink)}" onclick="this.select()" style="font-size:12px;width:100%;margin-top:4px;cursor:pointer;background:var(--b)">
-      </div>
-      <div class="grp-actions">
-        <a onclick="selectAll(${i})">✓ Seleziona tutti</a>
-        <span>·</span>
-        <a onclick="deselectAll(${i})"> Deseleziona tutti</a>
-      </div>
-      <div class="grp" id="grpList${i}">
-        ${groupNames.map(n => `<label><input type="checkbox" data-n="${esc(n)}" ${s.x.includes(n) ? '' : 'checked'} onchange="tg(${i},this)">${esc(n)} <small>(${g[n]})</small></label>`).join('')}
-      </div>
-      <small style="display:block;margin-top:6px">Spunta = incluso. Il link principale si aggiorna da solo.</small>
-    `;
-    el.dataset.state = 'open';
-  } catch (e) {
-    el.textContent = 'Errore di rete: ' + e.message;
-    el.dataset.state = 'closed';
-  }
+  const r = await fetch(`/api/playlist?groups=0&c=${await enc({ s: [strip(s)], g: [] })}`);
+  if (!r.ok) { el.textContent = 'Errore: ' + (await r.text()); return; }
+  const g = await r.json();
+  s.x = s.x || [];
+  el.innerHTML = '<div class="grp">' +
+    Object.entries(g).sort().map(([n, c]) =>
+      `<label><input type="checkbox" data-n="${esc(n)}" ${s.x.includes(n) ? '' : 'checked'} onchange="tg(${i},this)"><span class="gn">${esc(n)}</span><small>(${c})</small></label>`
+    ).join('') + '</div><small>Spunta = incluso. Il link si aggiorna da solo.</small>';
 }
-
-function selectAll(i) {
-  const s = D.s[i];
-  s.x = [];
-  const el = $('grpList' + i);
-  if (el) el.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = true);
-  upd();
-}
-
-function deselectAll(i) {
-  const s = D.s[i];
-  const el = $('grpList' + i);
-  if (el) {
-    s.x = Array.from(el.querySelectorAll('input[type="checkbox"]')).map(cb => { cb.checked = false; return cb.dataset.n; });
-  }
-  upd();
-}
-
 function tg(i, e) {
   const s = D.s[i], n = e.dataset.n;
   s.x = (s.x || []).filter((v) => v !== n);
   if (!e.checked) s.x.push(n);
   upd();
 }
+const strip = (s) => { const { o, ...r } = s; return r; };
+const CH = {};
 
-function moveUp(i) {
-  if (i <= 0) return;
-  const item = D.s.splice(i, 1)[0];
-  D.s.splice(i - 1, 0, item);
+// Modifica nome, indirizzo e credenziali della lista
+function edit(i) {
+  const s = D.s[i], el = $('e' + i);
+  if (el.innerHTML) { el.innerHTML = ''; return; }
+  const f = (id, v, ph) => `<input id="${id}${i}" value="${esc(v || '')}" placeholder="${ph}">`;
+  el.innerHTML = f('en', s.n, 'Nome lista') + f('eu', s.u, 'URL / server / portale') +
+    (s.t === 'xtream' ? f('ea', s.a, 'Username') + f('ep', s.p, 'Password') : '') +
+    (s.t === 'stalker' ? f('em', s.m, 'MAC') : '') +
+    `<button onclick="applyEdit(${i})">Applica</button>`;
+}
+function applyEdit(i) {
+  const s = D.s[i], g = (id) => $(id + i).value.trim();
+  s.n = g('en') || s.n;
+  s.u = g('eu') || s.u;
+  if (s.t === 'xtream') { s.a = g('ea'); s.p = g('ep'); }
+  if (s.t === 'stalker') s.m = g('em').toUpperCase();
   render();
 }
 
-function moveDown(i) {
-  if (i >= D.s.length - 1) return;
-  const item = D.s.splice(i, 1)[0];
-  D.s.splice(i + 1, 0, item);
-  render();
+// Modifica dei singoli canali (nome, tvg-id, gruppo, logo): richiede la sincronizzazione
+function chans(i) {
+  const el = $('c' + i);
+  if (el.innerHTML) { el.innerHTML = ''; return; }
+  if (!cloud) { el.textContent = 'La modifica dei canali richiede la sincronizzazione ☁️ (database collegato e accesso con la password).'; return; }
+  el.innerHTML = `<div class="row"><input id="cq${i}" placeholder="Cerca nome, id o gruppo" style="flex:1" onkeydown="if(event.key==='Enter')cgo(${i})"><label><input type="checkbox" id="cb${i}">senza tvg-id</label><button onclick="cgo(${i})">Cerca</button></div><div id="cr${i}"><small>Cerca un canale oppure spunta “senza tvg-id”.</small></div>`;
 }
+async function cgo(i) {
+  const s = D.s[i], out = $('cr' + i);
+  out.textContent = 'Carico…';
+  const t = await enc({ s: [strip(s)], g: [] });
+  const r = await fetch(`/api/playlist?channels=0&q=${encodeURIComponent($('cq' + i).value)}&bad=${$('cb' + i).checked ? 1 : 0}&c=${t}`);
+  if (!r.ok) { out.textContent = 'Errore: ' + (await r.text()); return; }
+  const { total, items } = await r.json();
+  const ov = s.o || {};
+  out.innerHTML = `<small>${total} canali trovati${total > items.length ? ', mostro i primi ' + items.length + ': affina la ricerca' : ''}</small>` +
+    items.map((c) => {
+      CH[i + c.h] = c;
+      const o = ov[c.h] || {}, v = (f) => esc(o[f] !== undefined ? o[f] : c[f]);
+      return `<div class="card" style="padding:8px" id="r${i}${c.h}"><small>${esc(c.n)}${ov[c.h] ? ' ✎' : ''}</small>
+        <input data-f="n" value="${v('n')}" placeholder="Nome"><input data-f="i" value="${v('i')}" placeholder="tvg-id"><input data-f="g" value="${v('g')}" placeholder="Gruppo"><input data-f="l" value="${v('l')}" placeholder="Logo (URL)">
+        <button onclick="sch(${i},'${c.h}')">Salva</button><button class="s" onclick="rch(${i},'${c.h}')">Ripristina</button></div>`;
+    }).join('');
+}
+function sch(i, h) {
+  const s = D.s[i], o = CH[i + h], card = $('r' + i + h), ov = {};
+  card.querySelectorAll('input').forEach((e) => { if (e.value !== o[e.dataset.f]) ov[e.dataset.f] = e.value; });
+  s.o = s.o || {};
+  if (Object.keys(ov).length) s.o[h] = ov; else delete s.o[h];
+  upd();
+  card.querySelector('small').textContent = o.n + (s.o[h] ? ' ✎ salvato' : '');
+}
+function rch(i, h) { delete (D.s[i].o || {})[h]; upd(); cgo(i); }
 
-function del(i) { if (confirm('Eliminare questa lista?')) { D.s.splice(i, 1); render(); } }
-function delEpg(i) { if (confirm('Eliminare questa sorgente EPG?')) { D.g.splice(i, 1); render(); } }
-
+function del(i) {
+  if (confirm('Eliminare questa lista?')) { D.s.splice(i, 1); render(); }
+}
 function ty() {
   const t = $('t').value;
   $('us').hidden = $('pw').hidden = t !== 'xtream';
   $('m').hidden = t !== 'stalker';
-  $('t').closest('.card').className = `card type-${t}`;
   $('u').placeholder = t === 'm3u' ? 'URL lista M3U' : t === 'xtream' ? 'Server (http://host:porta)' : 'Portale (http://host/c/)';
 }
-
-async function testLink() {
-  console.log(" Test link avviato...");
+function readNew() {
   const t = $('t').value;
-  const u = $('u').value.trim();
-  
-  if (!u) {
-    alert('Inserisci l\'URL per poterlo testare');
-    return;
-  }
-  
-  let testUrl = u;
-  if (t === 'xtream') {
-    const us = $('us').value.trim();
-    const pw = $('pw').value.trim();
-    if (!us || !pw) {
-      alert('Per testare Xtream, inserisci Username e Password');
-      return;
-    }
-    testUrl = `${u.replace(/\/+$/, '')}/get.php?username=${encodeURIComponent(us)}&password=${encodeURIComponent(pw)}&type=m3u_plus&output=ts`;
-  } else if (t === 'stalker') {
-    const m = $('m').value.trim().toUpperCase();
-    if (!m) {
-      alert('Per testare Stalker, inserisci l\'indirizzo MAC');
-      return;
-    }
-  }
-
-  const resultEl = $('testResult');
-  if (!resultEl) return;
-  resultEl.innerHTML = '<div class="test-result">⏳ Test in corso...</div>';
-  
-  const btn = $('testBtn');
-  if (btn) { btn.textContent = '⏳ Test...'; btn.disabled = true; }
-  
-  try {
-    if (useProxy && proxyUrl) {
-      const proxyEndpoint = proxyUrl.includes('/test') ? proxyUrl : proxyUrl + '/test';
-      const fetchUrl = `${proxyEndpoint}?url=${encodeURIComponent(testUrl)}&type=m3u`;
-      
-      const r = await fetch(fetchUrl);
-      const data = await r.json();
-      
-      if (data.status >= 200 && data.status < 400) {
-        let msg = `✅ Link valido (via proxy)\nStatus HTTP: ${data.status}\nContent-Type: ${data.contentType || 'n/a'}\n`;
-        if (data.analysis) {
-          msg += `Formato M3U: ${data.analysis.isM3U ? 'Sì ✓' : 'No ✗'}\nCanali: ${data.analysis.channels}\nGruppi: ${data.analysis.groups}\n`;
-        }
-        if (data.truncated) msg += `⚠️ Risposta troncata (troppo lunga)\n`;
-        resultEl.innerHTML = `<div class="test-result ok">${esc(msg)}</div>`;
-      } else {
-        resultEl.innerHTML = `<div class="test-result err"> Errore HTTP ${data.status}\n${esc(data.preview || 'Nessun dettaglio').slice(0, 500)}</div>`;
-      }
-    } else {
-      const s = { t, n: $('n').value || t, u, x: [], e: 1 };
-      if (t === 'xtream') { s.a = $('us').value.trim(); s.p = $('pw').value.trim(); }
-      if (t === 'stalker') s.m = $('m').value.trim().toUpperCase();
-      
-      const c = await enc({ s: [s], g: [], useManualEpg });
-      const r = await fetch(`/api/playlist?groups=0&c=${c}`);
-      
-      if (!r.ok) {
-        const errText = await r.text();
-        if (errText.includes('<!DOCTYPE html>') || errText.includes('<html')) {
-          resultEl.innerHTML = `<div class="test-result err"> Il server ha bloccato la richiesta (probabile blocco IP Vercel).\n💡 Attiva la spunta "Usa proxy per i test" qui sopra per aggirare il blocco.</div>`;
-        } else {
-          resultEl.innerHTML = `<div class="test-result err">❌ Errore: ${esc(errText)}</div>`;
-        }
-      } else {
-        const g = await r.json();
-        resultEl.innerHTML = `<div class="test-result ok">✅ Link valido! Trovati ${Object.keys(g).length} gruppi.</div>`;
-      }
-    }
-  } catch (e) { 
-    resultEl.innerHTML = `<div class="test-result err">❌ Errore di rete: ${esc(e.message)}</div>`;
-  } finally { 
-    if (btn) { btn.textContent = '🧪 Testa link'; btn.disabled = false; }
-  }
-}
-
-async function testEpg() {
-  const u = $('epgU').value.trim();
-  if (!u) return alert('Inserisci l\'URL EPG');
-  
-  const resultEl = $('testEpgResult');
-  resultEl.innerHTML = '<div class="test-result">⏳ Test in corso...</div>';
-  
-  const btn = $('testEpgBtn');
-  btn.textContent = ' Test...'; btn.disabled = true;
-  
-  try {
-    if (useProxy && proxyUrl) {
-      const proxyEndpoint = proxyUrl.includes('/test') ? proxyUrl : proxyUrl + '/test';
-      const r = await fetch(`${proxyEndpoint}?url=${encodeURIComponent(u)}&type=m3u`);
-      const data = await r.json();
-      
-      if (data.status >= 200 && data.status < 400) {
-        const isXml = (data.contentType || '').includes('xml');
-        let msg = `✅ URL raggiungibile (via proxy)\n`;
-        msg += `Status: ${data.status}\n`;
-        msg += `Content-Type: ${data.contentType || 'n/a'}\n`;
-        msg += `Sembra XML: ${isXml ? 'Sì ✓' : 'No ⚠️'}\n`;
-        if (data.truncated) msg += `⚠️ Risposta troncata\n`;
-        resultEl.innerHTML = `<div class="test-result ok">${esc(msg)}</div>`;
-      } else {
-        resultEl.innerHTML = `<div class="test-result err">❌ HTTP ${data.status}</div>`;
-      }
-    } else {
-      const r = await fetch(u, { method: 'HEAD' });
-      if (r.ok) resultEl.innerHTML = `<div class="test-result ok">✅ URL EPG raggiungibile!</div>`;
-      else resultEl.innerHTML = `<div class="test-result err">⚠️ HTTP ${r.status}</div>`;
-    }
-  } catch (e) { 
-    resultEl.innerHTML = `<div class="test-result err">❌ ${esc(e.message)}</div>`;
-  }
-  finally { btn.textContent = '🧪 Testa EPG'; btn.disabled = false; }
-}
-
-function add() {
-  const t = $('t').value, u = $('u').value.trim();
-  if (!u) return alert('Inserisci l\'URL');
-  const s = { t, n: $('n').value || t, u, x: [], e: 1, pf: 1 };
+  const s = { t, n: $('n').value || t, u: $('u').value.trim(), x: [], e: 1 };
+  if (!s.u) { alert('Inserisci l’URL'); return null; }
   if (t === 'xtream') { s.a = $('us').value.trim(); s.p = $('pw').value.trim(); }
   if (t === 'stalker') s.m = $('m').value.trim().toUpperCase();
+  return s;
+}
+function add() {
+  const s = readNew();
+  if (!s) return;
   D.s.push(s);
-  ['n', 'u', 'us', 'pw', 'm'].forEach(x => $(x).value = '');
-  $('testResult').innerHTML = '';
+  ['n', 'u', 'us', 'pw', 'm'].forEach((x) => ($(x).value = ''));
+  $('tn').textContent = '';
+  render();
+}
+function mv(i, d) {
+  const j = i + d;
+  if (j < 0 || j >= D.s.length) return;
+  [D.s[i], D.s[j]] = [D.s[j], D.s[i]];
   render();
 }
 
-function addEpg() {
-  const n = $('epgN').value.trim(), u = $('epgU').value.trim();
-  if (!u) return alert('Inserisci l\'URL EPG');
-  D.g.push({ n, u, e: 1 });
-  $('epgN').value = ''; $('epgU').value = '';
-  $('testEpgResult').innerHTML = '';
-  render();
+// Prova di una lista: account Xtream (stato/scadenza/connessioni) oppure lettura di M3U/Stalker
+async function runTest(s, el) {
+  el.textContent = 'Test in corso…';
+  try {
+    const r = await fetch(`/api/playlist?test=1&c=${await enc({ s: [strip(s)], g: [] })}`);
+    el.textContent = r.ok ? await r.text() : 'Errore: ' + (await r.text());
+  } catch { el.textContent = '❌ Server non raggiungibile'; }
+}
+const tst = (i) => runTest(D.s[i], $('t' + i));
+function tstNew() { const s = readNew(); if (s) runTest(s, $('tn')); }
+
+// Stato del pool Xtream
+async function chk() {
+  const xs = D.s.filter((s) => s.t === 'xtream'), out = $('ps');
+  if (!xs.length) { out.textContent = 'Nessuna lista Xtream.'; return; }
+  out.textContent = 'Controllo…';
+  const t = await enc({ s: xs.map((s) => ({ t: s.t, n: s.n, u: s.u, a: s.a, p: s.p })), g: [] });
+  const r = await fetch(`/api/playlist?status=1&c=${t}`);
+  if (!r.ok) { out.textContent = 'Errore: ' + (await r.text()); return; }
+  const st = await r.json();
+  let used = 0;
+  out.innerHTML = xs.map((s, k) => {
+    const x = st[k], d = x.exp ? new Date(x.exp).toLocaleDateString('it-IT') : '';
+    let ic, tx;
+    if (!x.ok) { ic = '🔴'; tx = x.why + (d ? ' (' + d + ')' : ''); }
+    else if (!s.pl) { ic = '⚪'; tx = `fuori dal pool, libera ${x.cons}/${x.max}`; }
+    else if (used < (D.n || 3)) { used++; ic = '🟢'; tx = `in uso nella playlist, ${x.cons}/${x.max}` + (d ? ', scade ' + d : ''); }
+    else { ic = '🟡'; tx = 'libera, di riserva'; }
+    return `<div>${ic} <b>${esc(s.n)}</b> <small>${esc(tx)}</small></div>`;
+  }).join('');
 }
 
 async function imp() {
   try {
-    const url = new URL($('imp').value.trim());
-    if (url.searchParams.has('k')) {
-      syncKey = url.searchParams.get('k');
-      $('syncKey').value = syncKey;
-      localStorage.syncKey = syncKey;
-      await loadFromCloud();
-    } else {
-      const decoded = await dec(url.searchParams.get('c'));
-      D.s = decoded.s || [];
-      D.g = decoded.g || [];
-      useManualEpg = decoded.useManualEpg || false;
-      $('useManualEpg').checked = useManualEpg;
-      localStorage.useManualEpg = useManualEpg;
-      render();
-    }
+    const k = D.k;
+    D = await dec(new URL($('imp').value.trim()).searchParams.get('c'));
+    D.k = k;
     $('imp').value = '';
+    render();
   } catch { alert('Link non valido'); }
 }
-
-function generateKey() {
-  const array = new Uint8Array(16);
-  crypto.getRandomValues(array);
-  const key = Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
-  $('syncKey').value = key;
-  syncKey = key;
-  localStorage.syncKey = key;
-  showStatus('✅ Nuova chiave generata. Clicca "Salva" per attivare il link breve.', 'success');
-}
-
-async function saveToCloud() {
-  const key = $('syncKey').value.trim();
-  if (!key) return alert('Genera o inserisci prima una chiave di sincronizzazione');
-  syncKey = key;
-  localStorage.syncKey = key;
-  showStatus(' Salvataggio in corso...', 'loading');
-  try {
-    const r = await fetch('/api/sync', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ k: key, cfg: { s: D.s, g: D.g, useManualEpg } })
-    });
-    if (r.ok) {
-      showStatus('✅ Dati salvati! Il link in alto è ora breve.', 'success');
-      upd();
-    } else {
-      showStatus('❌ Errore: ' + (await r.text()), 'error');
-    }
-  } catch (e) {
-    showStatus('❌ Errore di rete: ' + e.message, 'error');
-  }
-}
-
-async function loadFromCloud() {
-  const key = $('syncKey').value.trim();
-  if (!key) return alert('Inserisci la chiave di sincronizzazione');
-  showStatus('⏳ Caricamento in corso...', 'loading');
-  try {
-    const r = await fetch('/api/sync?k=' + encodeURIComponent(key));
-    if (r.ok) {
-      const data = await r.json();
-      D.s = data.s || [];
-      D.g = data.g || [];
-      useManualEpg = data.useManualEpg || false;
-      $('useManualEpg').checked = useManualEpg;
-      localStorage.useManualEpg = useManualEpg;
-      syncKey = key;
-      localStorage.syncKey = key;
-      render();
-      showStatus('✅ Dati caricati! (' + D.s.length + ' liste, ' + D.g.length + ' EPG)', 'success');
-    } else {
-      showStatus('❌ Errore: ' + (await r.text()), 'error');
-    }
-  } catch (e) {
-    showStatus('❌ Errore di rete: ' + e.message, 'error');
-  }
-}
-
-function showStatus(msg, type) {
-  const el = $('syncStatus');
-  el.textContent = msg;
-  el.style.color = type === 'success' ? '#2a9d8f' : type === 'error' ? '#e76f51' : 'var(--m)';
-}
-
 ty();
-render();
+boot();
 </script>
 </body>
 </html>

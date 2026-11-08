@@ -11,7 +11,7 @@ export default async function handler(req, res) {
     if (!cur.k) cur.k = randomUUID().replace(/-/g, '');
     if (req.method === 'PUT') {
       const b = req.body || {};
-      await saveCfg({ s: b.s || [], g: b.g || [], k: cur.k });
+      await saveCfg({ s: b.s || [], g: b.g || [], n: b.n || 3, k: cur.k });
       return res.json({ ok: true });
     }
     await saveCfg(cur);

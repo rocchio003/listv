@@ -185,12 +185,13 @@ async function boot() {
   }
   if (!cloud && !$('st').textContent) setSt('💾 Solo su questo dispositivo');
   render();
+  if (D.s.some((s) => s.t === 'xtream')) chk(false);
 }
 
 function render() {
   $('list').innerHTML = D.s.map((s, i) => `
     <div class="card">
-      <b>${esc(s.n)}</b> <small>${s.t}${(s.x || []).length ? ' · ' + s.x.length + ' gruppi esclusi' : ''}${Object.keys(s.o || {}).length ? ' · ' + Object.keys(s.o).length + ' canali modificati' : ''}</small>
+      <b>${esc(s.n)}</b> <small>${s.t}${(s.x || []).length ? ' · ' + s.x.length + ' gruppi esclusi' : ''}${Object.keys(s.o || {}).length ? ' · ' + Object.keys(s.o).length + ' canali modificati' : ''}</small>${s.t === 'xtream' ? `<br><small id="b${i}">${badge(s)}</small>` : ''}
       <div class="row">
         <label><input type="checkbox" ${s.e !== 0 ? 'checked' : ''} onchange="D.s[${i}].e=this.checked?1:0;upd()">attiva</label>
         <label><input type="checkbox" ${s.pf ? 'checked' : ''} onchange="D.s[${i}].pf=this.checked?1:0;upd()">nome lista nei gruppi</label>
@@ -207,6 +208,7 @@ function render() {
     </div>`).join('') || '<small>Nessuna lista ancora.</small>';
   $('eg').innerHTML = (D.g || []).map((g, i) => `<div class="row"><small style="flex:1;word-break:break-all">${esc(g)}</small><button class="s" onclick="D.g.splice(${i},1);render()">✕</button></div>`).join('');
   $('pn').value = D.n || 3;
+  drawPool();
   upd();
 }
 
@@ -327,25 +329,60 @@ async function runTest(s, el) {
 const tst = (i) => runTest(D.s[i], $('t' + i));
 function tstNew() { const s = readNew(); if (s) runTest(s, $('tn')); }
 
-// Stato del pool Xtream
-async function chk() {
+// Stato delle liste Xtream: ogni lista viene controllata per conto suo, così una lenta o in errore non blocca le altre
+const ST = {};
+const stKey = (s) => s.u + '|' + s.a;
+const fmtDate = (ms) => new Date(ms).toLocaleDateString('it-IT');
+const stLine = (x) => {
+  if (!x) return '';
+  if (x.loading) return '⏳ controllo…';
+  if (x.err) return '⚠️ ' + x.err;
+  const d = x.exp ? fmtDate(x.exp) : '';
+  if (x.ok) return `🟢 libera ${x.cons}/${x.max}${d ? ' · scade ' + d : ''}`;
+  if (x.why === 'occupata') return `🟡 occupata ${x.cons}/${x.max}${d ? ' · scade ' + d : ''}`;
+  return `🔴 ${x.why}${d ? ' (' + d + ')' : ''}`;
+};
+const badge = (s) => stLine(ST[stKey(s)]);
+function upBadges() {
+  D.s.forEach((s, i) => { const el = $('b' + i); if (el) el.textContent = badge(s); });
+}
+function drawPool() {
   const xs = D.s.filter((s) => s.t === 'xtream'), out = $('ps');
   if (!xs.length) { out.textContent = 'Nessuna lista Xtream.'; return; }
-  out.textContent = 'Controllo…';
-  const t = await enc({ s: xs.map((s) => ({ t: s.t, n: s.n, u: s.u, a: s.a, p: s.p })), g: [] });
-  const r = await fetch(`/api/playlist?status=1&c=${t}`);
-  if (!r.ok) { out.textContent = 'Errore: ' + (await r.text()); return; }
-  const st = await r.json();
-  let used = 0;
-  out.innerHTML = xs.map((s, k) => {
-    const x = st[k], d = x.exp ? new Date(x.exp).toLocaleDateString('it-IT') : '';
-    let ic, tx;
-    if (!x.ok) { ic = '🔴'; tx = x.why + (d ? ' (' + d + ')' : ''); }
-    else if (!s.pl) { ic = '⚪'; tx = `fuori dal pool, libera ${x.cons}/${x.max}`; }
-    else if (used < (D.n || 3)) { used++; ic = '🟢'; tx = `in uso nella playlist, ${x.cons}/${x.max}` + (d ? ', scade ' + d : ''); }
-    else { ic = '🟡'; tx = 'libera, di riserva'; }
-    return `<div>${ic} <b>${esc(s.n)}</b> <small>${esc(tx)}</small></div>`;
-  }).join('');
+  let used = 0, ok = 0, done = 0;
+  const rows = xs.map((s) => {
+    const x = ST[stKey(s)];
+    let role = '';
+    if (x && !x.loading) done++;
+    if (x && x.ok) {
+      ok++;
+      role = !s.pl ? 'fuori dal pool' : used < (D.n || 3) ? (used++, 'nella playlist') : 'di riserva';
+    }
+    return `<div>${stLine(x)} <b>${esc(s.n)}</b>${role ? ' <small>→ ' + role + '</small>' : ''}</div>`;
+  });
+  out.innerHTML = `<small>${done}/${xs.length} controllate, ${ok} disponibili</small>` + rows.join('');
+}
+async function chk(fresh = true) {
+  const xs = D.s.filter((s) => s.t === 'xtream');
+  xs.forEach((s) => (ST[stKey(s)] = { loading: true }));
+  upBadges();
+  drawPool();
+  await Promise.all(xs.map(async (s) => {
+    const ac = new AbortController(), tm = setTimeout(() => ac.abort(), 20000);
+    try {
+      const t = await enc({ s: [{ t: 'xtream', n: s.n, u: s.u, a: s.a, p: s.p }], g: [] });
+      const r = await fetch(`/api/playlist?status=1${fresh ? '&fresh=1' : ''}&c=${t}`, { signal: ac.signal });
+      const ct = r.headers.get('content-type') || '';
+      if (!r.ok) ST[stKey(s)] = { err: 'errore del server (' + r.status + ')' };
+      else if (!ct.includes('json')) ST[stKey(s)] = { err: 'il server non ha il controllo stato: aggiorna playlist.js e _lib.js su GitHub' };
+      else ST[stKey(s)] = (await r.json())[0] || { err: 'risposta vuota' };
+    } catch (e) {
+      ST[stKey(s)] = { err: e.name === 'AbortError' ? 'nessuna risposta in 20 secondi' : 'server non raggiungibile' };
+    }
+    clearTimeout(tm);
+    upBadges();
+    drawPool();
+  }));
 }
 
 async function imp() {

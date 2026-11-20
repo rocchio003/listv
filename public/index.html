@@ -3,398 +3,1003 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>IPTV Hub</title>
+<title>IPTV Hub — Xtream Merger</title>
 <style>
-:root{color-scheme:dark light;--b:#14161a;--c:#1e2127;--t:#e8eaed;--a:#4f8cff;--m:#8a919c}
-@media(prefers-color-scheme:light){:root{--b:#f4f5f7;--c:#fff;--t:#1a1c20;--m:#6b7280}}
+:root{
+  color-scheme:dark light;
+  --bg:#0f1217;
+  --card:#171c24;
+  --card2:#1e2430;
+  --line:#2b3342;
+  --text:#e9edf5;
+  --muted:#95a0b3;
+  --accent:#4f8cff;
+  --accent-bg:rgba(79,140,255,.14);
+  --ok:#22c55e;
+  --ok-bg:rgba(34,197,94,.14);
+  --warn:#eab308;
+  --warn-bg:rgba(234,179,8,.14);
+  --err:#ef4444;
+  --err-bg:rgba(239,68,68,.14);
+}
+@media(prefers-color-scheme:light){
+  :root{
+    --bg:#f3f5f9;
+    --card:#ffffff;
+    --card2:#f7f9fc;
+    --line:#dde3ec;
+    --text:#161b22;
+    --muted:#5f6b7c;
+  }
+}
 *{box-sizing:border-box}
-body{margin:0 auto;max-width:720px;padding:14px;font:15px system-ui,sans-serif;background:var(--b);color:var(--t)}
-h1{font-size:20px;margin:6px 0 12px}h2{font-size:16px;margin:20px 0 8px}
-.card{background:var(--c);border-radius:12px;padding:12px;margin:10px 0}
-input,select,button{font:inherit;color:inherit;background:transparent;border:1px solid #8884;border-radius:8px;padding:9px 10px;margin:3px 0;width:100%}
-button{width:auto;cursor:pointer;background:var(--a);border:0;color:#fff;margin-right:6px}
-button.s{background:#8883;color:var(--t)}
-.row{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:6px}
-.row label{display:flex;align-items:center;gap:6px;margin-right:8px}.row input{width:auto}
-small{color:var(--m)}
-.grp{max-height:260px;overflow:auto;margin-top:6px}
-.grp label{display:flex;gap:8px;align-items:center;padding:5px 0}.grp input{width:auto;margin:0;flex:none}
-.gn{flex:1;overflow-wrap:anywhere;color:var(--t)}
+body{
+  margin:0 auto;
+  max-width:820px;
+  padding:16px 14px 48px;
+  font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  background:var(--bg);
+  color:var(--text);
+}
+h1{font-size:21px;margin:0;display:flex;align-items:center;gap:8px}
+h2{font-size:15px;margin:22px 0 8px;display:flex;align-items:center;gap:8px;color:var(--text)}
+.step-num{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:22px;height:22px;border-radius:50%;font-size:12px;font-weight:700;
+  background:var(--accent);color:#fff;flex:none;
+}
+.card{
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:14px;
+  margin:10px 0;
+}
+.subcard{
+  background:var(--card2);
+  border:1px solid var(--line);
+  border-radius:10px;
+  padding:10px;
+  margin-top:10px;
+}
+input,select,button{
+  font:inherit;color:inherit;
+  border-radius:8px;
+  padding:8px 10px;
+  border:1px solid var(--line);
+  background:var(--card2);
+}
+input:focus,select:focus{outline:2px solid var(--accent);outline-offset:-1px}
+button{
+  cursor:pointer;
+  background:var(--accent);
+  border:0;
+  color:#fff;
+  font-weight:600;
+  white-space:nowrap;
+}
+button:hover{filter:brightness(1.08)}
+button:disabled{opacity:.55;cursor:not-allowed}
+button.sec{background:var(--card2);color:var(--text);border:1px solid var(--line);font-weight:500}
+button.danger{background:var(--err-bg);color:var(--err);border:1px solid rgba(239,68,68,.3)}
+button.sm{padding:5px 9px;font-size:12.5px}
+.row{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.between{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}
+.muted{color:var(--muted);font-size:12.5px}
+.badge{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:3px 8px;border-radius:999px;font-size:12px;font-weight:600;
+  border:1px solid var(--line);background:var(--card2);
+}
+.b-ok{background:var(--ok-bg);color:var(--ok);border-color:rgba(34,197,94,.3)}
+.b-warn{background:var(--warn-bg);color:var(--warn);border-color:rgba(234,179,8,.3)}
+.b-err{background:var(--err-bg);color:var(--err);border-color:rgba(239,68,68,.3)}
+.b-info{background:var(--accent-bg);color:var(--accent);border-color:rgba(79,140,255,.3)}
+
+.stats{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.tabs{display:flex;flex-wrap:wrap;gap:6px}
+.tab{background:var(--card2);color:var(--muted);border:1px solid var(--line);font-weight:500;padding:5px 10px;font-size:12.5px}
+.tab.active{background:var(--accent-bg);color:var(--accent);border-color:var(--accent)}
+
+.src-card{
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:12px;
+  margin:8px 0;
+  transition:border-color .15s;
+}
+.src-card.picked{border-color:var(--accent)}
+.src-head{display:flex;align-items:flex-start;gap:10px}
+.src-chk{width:18px;height:18px;margin:3px 0 0;accent-color:var(--accent);cursor:pointer;flex:none}
+.src-title{font-weight:700;font-size:15px}
+.src-host{font-size:12px;color:var(--muted);word-break:break-all}
+
+.mode-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:600px){.mode-grid{grid-template-columns:1fr}}
+.mode-opt{
+  border:1px solid var(--line);border-radius:10px;padding:10px 12px;cursor:pointer;
+  background:var(--card2);text-align:left;display:flex;gap:8px;align-items:flex-start;width:100%;
+  color:var(--text);font-weight:400;
+}
+.mode-opt.active{border-color:var(--accent);background:var(--accent-bg)}
+.mode-opt input{width:auto;margin-top:3px}
+
+.grp-list{
+  max-height:290px;overflow:auto;
+  border:1px solid var(--line);border-radius:8px;
+  padding:4px 8px;margin:8px 0;background:var(--card);
+}
+.grp-item{
+  display:flex;align-items:center;gap:8px;padding:5px 2px;
+  border-bottom:1px solid rgba(128,128,128,.12);cursor:pointer;
+}
+.grp-item:last-child{border-bottom:0}
+.grp-item input{width:auto;margin:0;flex:none;accent-color:var(--accent)}
+.grp-name{flex:1;overflow-wrap:anywhere;font-size:13px}
+
+.preview-grid{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px}
+.hidden{display:none!important}
 </style>
 </head>
 <body>
-<h1>📺 IPTV Hub</h1>
-<small id="st"></small> <a href="#" style="font-size:12px" onclick="localStorage.removeItem('p');location.reload();return false">cambia password</a> · <a href="#" style="font-size:12px" onclick="gsync(false);return false">sincronizza Gist</a><br><small id="gs"></small>
 
-<div class="card">
-  <small>Link unico per il player (contiene tutta la configurazione)</small>
-  <input id="link" readonly onclick="this.select()">
-  <small id="len"></small>
+<div class="between">
+  <h1>📺 IPTV Hub <span class="badge b-info">Solo Xtream</span></h1>
   <div class="row">
-    <button onclick="navigator.clipboard.writeText($('link').value);this.textContent='Copiato ✓'">Copia link</button>
-    <button class="s" onclick="$('link').value&&window.open($('link').value)">Apri / testa</button>
+    <span id="cloudBadge" class="badge">⏳ Verifica…</span>
+    <button id="btnSyncGist" class="sec sm" onclick="gsync(false)">🔄 Sincronizza Gist</button>
+    <button id="btnLogout" class="sec sm hidden" onclick="logout()">Esci</button>
+  </div>
+</div>
+<div id="gistInfo" class="muted" style="margin-top:4px"></div>
+
+<!-- Box Login / Configurazione Vercel -->
+<div id="authBox" class="card hidden">
+  <div style="font-weight:700;margin-bottom:4px" id="authTitle">Accesso al pannello</div>
+  <div id="authDesc" class="muted" style="margin-bottom:8px"></div>
+  <div id="authForm" class="row">
+    <input id="pwInput" type="password" placeholder="Password admin (ADMIN_PASSWORD su Vercel)" style="flex:1;min-width:200px" onkeydown="if(event.key==='Enter')login()">
+    <button onclick="login()">Accedi</button>
+    <button class="sec" onclick="useLocalMode()">Usa solo su questo dispositivo</button>
   </div>
 </div>
 
+<!-- STEP 1: Liste Xtream & Stato -->
+<h2><span class="step-num">1</span> Le tue liste Xtream (da Gist o manuali)</h2>
 <div class="card">
-  <small>Link EPG unito (guida TV): è già indicato nella playlist, ma puoi incollarlo anche nelle impostazioni EPG del player</small>
-  <input id="epg" readonly onclick="this.select()">
-  <div class="row"><button onclick="navigator.clipboard.writeText($('epg').value);this.textContent='Copiato ✓'">Copia link EPG</button></div>
+  <div class="between">
+    <div class="stats" id="statsBar"></div>
+    <button id="btnChkAll" onclick="chkAll(true)">🔍 Controlla stato tutte</button>
+  </div>
+  <div class="between" style="margin-top:8px">
+    <div class="tabs" id="filterTabs">
+      <button class="tab active" data-f="all" onclick="setFilter('all')">Tutte</button>
+      <button class="tab" data-f="ok" onclick="setFilter('ok')">🟢 Solo libere</button>
+      <button class="tab" data-f="sel" onclick="setFilter('sel')">✓ Selezionate</button>
+    </div>
+    <input id="searchInput" placeholder="Cerca lista per nome o server..." style="width:230px;max-width:100%" oninput="renderList()">
+  </div>
 </div>
 
-<h2>Pool Xtream</h2>
-<div class="card">
-  <small>Le liste Xtream con “nel pool” spuntato vengono controllate a ogni aggiornamento: nella playlist entrano le prime disponibili (account attivo, non scaduto, con una connessione libera), nell'ordine in cui sono elencate qui sotto.</small>
-  <div class="row"><label>Quante usarne <input id="pn" type="number" min="1" max="20" style="width:70px" onchange="D.n=Math.max(1,+this.value||3);upd()"></label><button class="s" onclick="chk()">Controlla stato</button></div>
-  <div id="ps"></div>
-</div>
-
-<h2>Liste</h2>
 <div id="list"></div>
 
-<h2>Aggiungi lista</h2>
+<details class="card" id="addBox">
+  <summary style="cursor:pointer;font-weight:600">+ Aggiungi una lista Xtream manualmente</summary>
+  <div style="margin-top:10px;display:grid;gap:8px">
+    <input id="newName" placeholder="Nome (es. Lista Principale)">
+    <input id="newUrl" placeholder="Server URL (es. http://server.com:8080)">
+    <div class="row">
+      <input id="newUser" placeholder="Username" style="flex:1">
+      <input id="newPass" placeholder="Password" style="flex:1">
+    </div>
+    <div class="row">
+      <button onclick="addManual()">+ Aggiungi lista</button>
+      <button class="sec" onclick="testNew()">Testa prima di aggiungere</button>
+      <span id="newTestOut" class="muted"></span>
+    </div>
+  </div>
+</details>
+
+<!-- STEP 2: Scelta manuale vs Pool -->
+<h2><span class="step-num">2</span> Come vuoi scegliere le 2 o 3 liste da unire?</h2>
 <div class="card">
-  <select id="t" onchange="ty()">
-    <option value="m3u">M3U (URL)</option>
-    <option value="xtream">Xtream Codes</option>
-    <option value="stalker">Stalker / MAC</option>
-  </select>
-  <input id="n" placeholder="Nome">
-  <input id="u" placeholder="URL lista M3U">
-  <input id="us" placeholder="Username" hidden>
-  <input id="pw" placeholder="Password" hidden>
-  <input id="m" placeholder="MAC (00:1A:79:...)" hidden>
-  <button onclick="add()">+ Aggiungi</button>
-  <button class="s" onclick="tstNew()">Testa</button>
-  <small id="tn" style="display:block"></small>
+  <div class="mode-grid">
+    <button type="button" class="mode-opt" id="modeManual" onclick="setMode('manual')">
+      <input type="radio" name="mode" id="radManual" tabindex="-1">
+      <div>
+        <div style="font-weight:700">✋ Scelta manuale (consigliata)</div>
+        <div class="muted">Unisco esattamente le liste che ho spuntato sopra (es. 2 o 3), anche se una è occupata mentre la sto già guardando.</div>
+      </div>
+    </button>
+    <button type="button" class="mode-opt" id="modePool" onclick="setMode('pool')">
+      <input type="radio" name="mode" id="radPool" tabindex="-1">
+      <div>
+        <div style="font-weight:700">🤖 Pool automatico</div>
+        <div class="muted">Tra le liste spuntate sopra, il server prende in automatico le prime <b>N libere</b> dall’alto verso il basso.</div>
+      </div>
+    </button>
+  </div>
+
+  <div id="poolSettings" class="subcard hidden">
+    <div class="row">
+      <label class="row" style="font-weight:600">
+        Quante liste libere usare al massimo:
+        <input id="poolN" type="number" min="1" max="20" style="width:74px" onchange="D.n=Math.max(1,+this.value||3);saveAndRefresh()">
+      </label>
+    </div>
+    <div id="poolPreview" style="margin-top:8px"></div>
+  </div>
+
+  <div id="manualSummary" class="subcard"></div>
 </div>
 
-<h2>Sorgenti EPG</h2>
+<!-- STEP 3: Link finale Vercel + Verifica -->
+<h2><span class="step-num">3</span> Link unico su Vercel &amp; Verifica reale</h2>
 <div class="card">
-  <small>Aggiungi link XMLTV (anche .xml.gz): vengono uniti in un solo EPG, insieme a quelli delle tue liste Xtream e M3U.</small>
-  <div id="eg"></div>
-  <input id="ei" placeholder="https://.../epg.xml.gz">
-  <button onclick="addEpg()">+ Aggiungi EPG</button>
-</div>
+  <div style="margin-bottom:10px">
+    <div style="font-weight:600;margin-bottom:4px">Link Playlist M3U unita (da mettere nel player)</div>
+    <div class="row">
+      <input id="outM3u" class="mono" readonly onclick="this.select()" style="flex:1;min-width:220px">
+      <button onclick="copyEl('outM3u', this)">Copia link</button>
+      <button class="sec" onclick="openLink()">Apri</button>
+    </div>
+    <div id="linkNote" class="muted" style="margin-top:4px"></div>
+  </div>
 
-<h2>Importa da un link vecchio</h2>
-<div class="card">
-  <input id="imp" placeholder="Incolla qui un link già generato">
-  <button class="s" onclick="imp()">Carica configurazione</button>
+  <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line)">
+    <div style="font-weight:600;margin-bottom:4px">Link EPG automatico (preso dalle tue Xtream)</div>
+    <div class="row">
+      <input id="outEpg" class="mono" readonly onclick="this.select()" style="flex:1;min-width:220px">
+      <button class="sec" onclick="copyEl('outEpg', this)">Copia EPG</button>
+    </div>
+    <div class="muted" style="margin-top:4px">Questo link EPG è già inserito dentro la playlist M3U, ma puoi incollarlo anche manualmente nelle impostazioni guida TV del player.</div>
+  </div>
+
+  <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--line)">
+    <div class="between">
+      <div>
+        <div style="font-weight:600">Non sei sicuro che funzioni tutto?</div>
+        <div class="muted">Verifica dal vivo cosa genera Vercel in questo momento con le liste e i gruppi scelti.</div>
+      </div>
+      <button id="btnVerify" onclick="verifyPlaylist()">🧪 Verifica playlist unita</button>
+    </div>
+    <div id="verifyOut" class="subcard hidden"></div>
+  </div>
 </div>
 
 <script>
-const $ = (i) => document.getElementById(i);
-const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const b64e = (u) => btoa(String.fromCharCode(...u)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-const b64d = (s) => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0));
 const enc = async (o) =>
   b64e(new Uint8Array(await new Response(new Blob([JSON.stringify(o)]).stream().pipeThrough(new CompressionStream('deflate-raw'))).arrayBuffer()));
-const dec = async (t) =>
-  JSON.parse(await new Response(new Blob([b64d(t)]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text());
 
-let D = { s: [] };
-try { D = JSON.parse(localStorage.cfg) || D; } catch {}
+let D = { s: [], mode: 'manual', n: 3 };
+try {
+  const saved = JSON.parse(localStorage.cfg || 'null');
+  if (saved && Array.isArray(saved.s)) D = { mode: 'manual', n: 3, ...saved };
+} catch {}
 
-let P = localStorage.p || '', cloud = false, saveT;
-const api = (m, b) => fetch('/api/config', { method: m, headers: { 'x-admin': P, 'content-type': 'application/json' }, body: b && JSON.stringify(b) });
-const setSt = (t) => ($('st').textContent = t);
+let P = localStorage.p || '';
+let cloud = false;
+let saveTimer = null;
+let filterMode = 'all';
+const ST = {}; // status cache in pagina per host|user
+const OPEN = { groups: null, edit: null }; // indice lista con pannello aperto
+const GRP_CACHE = {}; // cache gruppi caricati per indice lista
+const GRP_SEARCH = {}; // testo filtro gruppi per indice lista
 
-async function upd() {
-  try { localStorage.cfg = JSON.stringify(D); } catch {}
-  const has = D.s.length || (D.g || []).length;
-  let par, note = '';
-  if (cloud && D.k) {
-    par = 'k=' + D.k;
-    note = '☁️ Il link resta sempre lo stesso: le modifiche arrivano al player senza cambiarlo.';
-    setSt('☁️ Salvataggio…');
-    clearTimeout(saveT);
-    saveT = setTimeout(async () => {
-      try {
-        const r = await api('PUT', { s: D.s, g: D.g || [], n: D.n || 3 });
-        setSt(r.ok ? '☁️ Sincronizzato' : '⚠️ Salvataggio non riuscito');
-      } catch { setSt('⚠️ Salvataggio non riuscito'); }
-    }, 600);
-  } else {
-    par = 'c=' + (await enc(D));
-  }
-  const l = D.s.length ? location.origin + '/playlist.m3u?' + par : '';
-  $('link').value = l;
-  $('epg').value = has ? location.origin + '/epg.xml?' + par : '';
-  $('len').textContent = cloud ? note : l ? l.length + ' caratteri' + (l.length > 2000 ? ' ⚠️ link lungo: alcuni player potrebbero rifiutarlo, escludi meno gruppi o usa meno liste' : '') : '';
+const stKey = (s) => String(s.u || '').trim().replace(/\/+$/, '') + '|' + (s.a || '');
+const fmtDate = (ms) => new Date(ms).toLocaleDateString('it-IT');
+
+function setCloudBadge(text, cls = '') {
+  const el = $('cloudBadge');
+  el.textContent = text;
+  el.className = 'badge ' + cls;
 }
 
-// Unisce le liste del Gist (riconosciute dall'id) con quelle dell'app: i dati dell'app (gruppi, pool, ordine, correzioni) restano
-function mergeGist(gs, gg) {
-  const r = { add: 0, upd: 0, del: 0, epg: 0 };
-  const have = new Map(D.s.filter((s) => s.gid).map((s) => [s.gid, s]));
-  for (const n of gs) {
-    const o = have.get(n.gid);
-    if (o) {
-      let ch = false;
-      for (const k of ['n', 'u', 'a', 'p', 'm']) if (n[k] !== undefined && o[k] !== n[k]) { o[k] = n[k]; ch = true; }
-      if (ch) r.upd++;
-    } else {
-      D.s.push({ gid: n.gid, t: n.t, n: n.n, u: n.u, ...(n.a !== undefined && { a: n.a, p: n.p }), ...(n.m !== undefined && { m: n.m }), pl: n.pl, x: [], e: n.off ? 0 : 1 });
-      r.add++;
-    }
-  }
-  if (gs.length) { // le liste arrivate dal Gist e poi cancellate dal Gist vengono tolte; quelle aggiunte a mano restano
-    const ids = new Set(gs.map((n) => n.gid)), before = D.s.length;
-    D.s = D.s.filter((s) => !s.gid || ids.has(s.gid));
-    r.del = before - D.s.length;
-  }
-  D.g = D.g || [];
-  for (const u of gg) if (!D.g.includes(u)) { D.g.push(u); r.epg++; }
-  return r;
-}
-async function gsync(auto) {
-  if (!cloud) { if (!auto) alert('Serve la sincronizzazione ☁️ (database collegato e accesso con la password).'); return; }
-  const g = $('gs');
-  try {
-    const r = await fetch('/api/gist', { headers: { 'x-admin': P } });
-    if (r.status === 204) { if (!auto) g.textContent = 'Gist non configurato: aggiungi GIST_ID su Vercel.'; return; }
-    if (!r.ok) { g.textContent = '⚠️ Gist: ' + (await r.text()); return; }
-    const j = await r.json();
-    const m = mergeGist(j.s, j.g);
-    g.textContent = `🔄 Gist: ${m.add} nuove, ${m.upd} aggiornate, ${m.del} rimosse` + (m.epg ? `, ${m.epg} EPG` : '') +
-      (j.skipped.length ? ` · non importate perché sono questo stesso sito: ${j.skipped.join(', ')}` : '');
-    if (!auto) render();
-  } catch { g.textContent = '⚠️ Gist non raggiungibile'; }
+async function apiConfig(method, body) {
+  return fetch('/api/config', {
+    method,
+    headers: { 'x-admin': P, 'content-type': 'application/json' },
+    body: body ? JSON.stringify(body) : undefined,
+  });
 }
 
 async function boot() {
-  const local = D;
-  if (!P) P = prompt('Password admin (la stessa di ADMIN_PASSWORD su Vercel). Annulla = solo su questo dispositivo') || '';
-  if (P) {
-    try {
-      const r = await api('GET');
-      if (r.ok) {
-        D = (await r.json()).cfg;
-        D.s = D.s || []; D.g = D.g || []; D.n = D.n || 3;
-        cloud = true;
-        localStorage.p = P;
-        if (!D.s.length && (local.s || []).length && confirm('Importare le liste salvate su questo dispositivo?')) D = { ...local, k: D.k };
-        setSt('☁️ Sincronizzato');
-        await gsync(true);
-      } else {
-        if (r.status === 401) { localStorage.removeItem('p'); P = ''; }
-        setSt('⚠️ ' + (await r.text()) + ' — modalità locale');
-      }
-    } catch { setSt('⚠️ Server non raggiungibile — modalità locale'); }
+  if (!P) {
+    showAuth('Accedi con la tua password admin', 'Inserisci ADMIN_PASSWORD impostata su Vercel per sbloccare il salvataggio fisso e il Gist.', true);
+    renderAll();
+    if (D.s.length) chkAll(false);
+    return;
   }
-  if (!cloud && !$('st').textContent) setSt('💾 Solo su questo dispositivo');
-  render();
-  if (D.s.some((s) => s.t === 'xtream')) chk(false);
+
+  try {
+    const r = await apiConfig('GET');
+    const j = await r.json().catch(() => ({}));
+    if (r.ok && j.ok) {
+      const localS = D.s || [];
+      D = {
+        k: j.cfg.k,
+        mode: j.cfg.mode === 'pool' ? 'pool' : 'manual',
+        n: Math.max(1, +j.cfg.n || 3),
+        s: (j.cfg.s || []).filter((s) => !s.t || s.t === 'xtream'),
+      };
+      cloud = true;
+      $('authBox').classList.add('hidden');
+      $('btnLogout').classList.remove('hidden');
+      setCloudBadge('☁️ Sincronizzato su Vercel', 'b-ok');
+
+      if (!D.s.length && localS.length && confirm('Trovate liste salvate su questo dispositivo. Importarle sul cloud Vercel?')) {
+        D.s = localS;
+        await persistNow();
+      }
+      await gsync(true);
+    } else if (j.code === 'BAD_PW') {
+      localStorage.removeItem('p');
+      P = '';
+      showAuth('Password errata', 'Inserisci la password ADMIN_PASSWORD corretta oppure continua in modalità locale.', true);
+      setCloudBadge('🔒 Accesso richiesto', 'b-warn');
+    } else {
+      showAuth('Configurazione Vercel incompleta', `${j.error || 'Errore server'}. Finché non la completi puoi comunque usare la modalità locale.`, false);
+      setCloudBadge('⚠️ Solo locale', 'b-warn');
+    }
+  } catch {
+    showAuth('Server non raggiungibile', 'Controlla che il deploy su Vercel sia attivo o continua in modalità locale.', false);
+    setCloudBadge('⚠️ Offline / Locale', 'b-err');
+  }
+
+  renderAll();
+  if (D.s.length) chkAll(false);
 }
 
-function render() {
-  $('list').innerHTML = D.s.map((s, i) => `
-    <div class="card">
-      <b>${esc(s.n)}</b> <small>${s.t}${(s.x || []).length ? ' · ' + s.x.length + ' gruppi esclusi' : ''}${Object.keys(s.o || {}).length ? ' · ' + Object.keys(s.o).length + ' canali modificati' : ''}</small>${s.t === 'xtream' ? `<br><small id="b${i}">${badge(s)}</small>` : ''}
-      <div class="row">
-        <label><input type="checkbox" ${s.e !== 0 ? 'checked' : ''} onchange="D.s[${i}].e=this.checked?1:0;upd()">attiva</label>
-        <label><input type="checkbox" ${s.pf ? 'checked' : ''} onchange="D.s[${i}].pf=this.checked?1:0;upd()">nome lista nei gruppi</label>
-        ${s.t === 'xtream' ? `<label><input type="checkbox" ${s.pl ? 'checked' : ''} onchange="D.s[${i}].pl=this.checked?1:0;upd()">nel pool</label>` : ''}
-        <button class="s" onclick="mv(${i},-1)">↑</button>
-        <button class="s" onclick="mv(${i},1)">↓</button>
-        <button class="s" onclick="tst(${i})">Testa</button>
-        <button class="s" onclick="edit(${i})">Modifica</button>
-        <button class="s" onclick="groups(${i})">Gruppi</button>
-        <button class="s" onclick="chans(${i})">Canali</button>
-        <button class="s" onclick="del(${i})">Elimina</button>
+function showAuth(title, desc, showForm) {
+  $('authBox').classList.remove('hidden');
+  $('authTitle').textContent = title;
+  $('authDesc').textContent = desc;
+  $('authForm').classList.toggle('hidden', !showForm);
+}
+
+async function login() {
+  const val = $('pwInput').value.trim();
+  if (!val) return;
+  P = val;
+  localStorage.p = P;
+  await boot();
+}
+
+function useLocalMode() {
+  $('authBox').classList.add('hidden');
+  setCloudBadge('💾 Modalità locale', 'b-warn');
+  updateLinks();
+}
+
+function logout() {
+  localStorage.removeItem('p');
+  P = '';
+  cloud = false;
+  $('btnLogout').classList.add('hidden');
+  setCloudBadge('🔒 Disconnesso', 'b-warn');
+  showAuth('Accesso al pannello', 'Inserisci ADMIN_PASSWORD impostata su Vercel.', true);
+}
+
+function mergeGist(gs) {
+  const res = { add: 0, upd: 0, del: 0 };
+  const byId = new Map(D.s.filter((s) => s.gid).map((s) => [s.gid, s]));
+
+  for (const n of gs) {
+    const old = byId.get(n.gid);
+    if (old) {
+      let changed = false;
+      for (const k of ['n', 'u', 'a', 'p']) {
+        if (old[k] !== n[k]) {
+          old[k] = n[k];
+          changed = true;
+        }
+      }
+      if (changed) res.upd++;
+    } else {
+      // Le nuove liste importate dal Gist partono disattivate (e: 0) se ne hai già selezionate altre,
+      // oppure attive se è la prima volta, così scegli tu quali 2 o 3 unire senza caos.
+      D.s.push({
+        gid: n.gid,
+        t: 'xtream',
+        n: n.n,
+        u: n.u,
+        a: n.a,
+        p: n.p,
+        e: 0,
+        pf: 1,
+        gm: 'ex',
+        x: [],
+        gr: [],
+      });
+      res.add++;
+    }
+  }
+
+  if (gs.length) {
+    const validIds = new Set(gs.map((x) => x.gid));
+    const before = D.s.length;
+    D.s = D.s.filter((s) => !s.gid || validIds.has(s.gid));
+    res.del = before - D.s.length;
+  }
+  return res;
+}
+
+async function gsync(auto) {
+  if (!cloud) {
+    if (!auto) alert('Per leggere il Gist devi prima accedere con la password admin e collegare Redis su Vercel.');
+    return;
+  }
+  const info = $('gistInfo');
+  info.textContent = '🔄 Sincronizzazione dal Gist in corso…';
+  try {
+    const r = await fetch('/api/gist', { headers: { 'x-admin': P } });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j.ok) {
+      info.textContent = '⚠️ Errore Gist: ' + (j.error || r.status);
+      return;
+    }
+    if (!j.configured) {
+      info.textContent = 'ℹ️ Gist non collegato: imposta GIST_ID su Vercel se vuoi importare le liste dal tuo Gist.';
+      return;
+    }
+    const m = mergeGist(j.s || []);
+    info.textContent = `🐙 Gist (${j.file}): ${j.total} liste Xtream trovate · ${m.add} nuove, ${m.upd} aggiornate, ${m.del} rimosse.`;
+    await persistNow();
+    renderAll();
+    if (!auto && D.s.length) chkAll(false);
+  } catch {
+    info.textContent = '⚠️ Impossibile contattare /api/gist';
+  }
+}
+
+async function persistNow() {
+  try { localStorage.cfg = JSON.stringify(D); } catch {}
+  if (!cloud) return;
+  setCloudBadge('☁️ Salvataggio…', 'b-info');
+  try {
+    const r = await apiConfig('PUT', { mode: D.mode, n: D.n, s: D.s });
+    if (r.ok) {
+      const j = await r.json();
+      if (j.k) D.k = j.k;
+      setCloudBadge('☁️ Sincronizzato su Vercel', 'b-ok');
+    } else {
+      setCloudBadge('⚠️ Errore salvataggio', 'b-err');
+    }
+  } catch {
+    setCloudBadge('⚠️ Errore rete', 'b-err');
+  }
+}
+
+function saveAndRefresh() {
+  try { localStorage.cfg = JSON.stringify(D); } catch {}
+  renderMode();
+  renderStats();
+  updateLinks();
+  if (cloud) {
+    setCloudBadge('☁️ Salvataggio…', 'b-info');
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(persistNow, 500);
+  }
+}
+
+async function updateLinks() {
+  const activeCount = D.s.filter((s) => s.e !== 0).length;
+  let param = '';
+  let note = '';
+
+  if (cloud && D.k) {
+    param = 'k=' + encodeURIComponent(D.k);
+    note = 'Link fisso su Vercel: ogni modifica a liste o gruppi arriva subito al player senza cambiare indirizzo.';
+  } else {
+    const minimal = {
+      mode: D.mode,
+      n: D.n,
+      s: D.s.filter((s) => s.e !== 0).map(({ o, ...rest }) => rest),
+    };
+    param = 'c=' + (await enc(minimal));
+    note = 'Modalità locale: il link contiene tutta la configurazione (cambia se modifichi le liste). Collega Redis su Vercel per avere un link fisso.';
+  }
+
+  const m3u = activeCount ? `${location.origin}/playlist.m3u?${param}` : '';
+  const epg = activeCount ? `${location.origin}/epg.xml?${param}` : '';
+  $('outM3u').value = m3u;
+  $('outEpg').value = epg;
+  $('linkNote').textContent = activeCount
+    ? note + (!cloud && m3u.length > 2000 ? ` ⚠️ Link molto lungo (${m3u.length} caratteri).` : '')
+    : 'Seleziona almeno una lista sopra per generare il link.';
+}
+
+function statusBadgeHtml(st) {
+  if (!st) return '<span class="badge">⚪ Non controllata</span>';
+  if (st.loading) return '<span class="badge b-info">⏳ Controllo…</span>';
+  if (st.err) return `<span class="badge b-err">⚠️ ${esc(st.err)}</span>`;
+  const exp = st.exp ? ` · scade ${fmtDate(st.exp)}` : '';
+  const ms = st.ms ? ` · ${st.ms}ms` : '';
+  if (st.ok) return `<span class="badge b-ok">🟢 Libera ${st.cons}/${st.max}${exp}${ms}</span>`;
+  if (st.state === 'busy') return `<span class="badge b-warn">🟡 Occupata ${st.cons}/${st.max}${exp}</span>`;
+  if (st.state === 'expired') return `<span class="badge b-err">🔴 Scaduta${exp}</span>`;
+  return `<span class="badge b-err">🔴 ${esc(st.why || 'Offline')}${exp}</span>`;
+}
+
+function groupsSummary(s) {
+  if (s.gm === 'in') {
+    const c = (s.gr || []).length;
+    return c ? `Solo ${c} gruppi scelti` : 'Nessun gruppo scelto (0 canali)';
+  }
+  const ex = (s.x || []).length;
+  return ex ? `Tutti tranne ${ex} esclusi` : 'Tutti i gruppi inclusi';
+}
+
+function renderStats() {
+  const total = D.s.length;
+  let ok = 0, busy = 0, bad = 0, sel = 0;
+  for (const s of D.s) {
+    if (s.e !== 0) sel++;
+    const st = ST[stKey(s)];
+    if (!st || st.loading) continue;
+    if (st.ok) ok++;
+    else if (st.state === 'busy') busy++;
+    else bad++;
+  }
+  $('statsBar').innerHTML = `
+    <span class="badge">Totale: ${total}</span>
+    <span class="badge b-ok">🟢 Libere: ${ok}</span>
+    <span class="badge b-warn">🟡 Occupate: ${busy}</span>
+    <span class="badge b-err">🔴 Scadute/Offline: ${bad}</span>
+    <span class="badge b-info">✓ Selezionate: ${sel}</span>
+  `;
+}
+
+function setFilter(f) {
+  filterMode = f;
+  document.querySelectorAll('#filterTabs .tab').forEach((b) => b.classList.toggle('active', b.dataset.f === f));
+  renderList();
+}
+
+function renderList() {
+  const q = ($('searchInput').value || '').trim().toLowerCase();
+  const rows = [];
+
+  D.s.forEach((s, i) => {
+    const st = ST[stKey(s)];
+    if (filterMode === 'ok' && !(st && st.ok)) return;
+    if (filterMode === 'sel' && s.e === 0) return;
+    if (q && !`${s.n} ${s.u} ${s.a}`.toLowerCase().includes(q)) return;
+
+    const checked = s.e !== 0;
+    rows.push(`
+      <div class="src-card ${checked ? 'picked' : ''}" id="card-${i}">
+        <div class="src-head">
+          <input type="checkbox" class="src-chk" ${checked ? 'checked' : ''} onchange="toggleSrc(${i}, this.checked)" title="Seleziona questa lista per la playlist unita">
+          <div style="flex:1;min-width:0">
+            <div class="between">
+              <div class="src-title">${esc(s.n)}</div>
+              <div id="badge-${i}">${statusBadgeHtml(st)}</div>
+            </div>
+            <div class="src-host">${esc(s.u)} · utente: ${esc(s.a)} · <b>${groupsSummary(s)}</b></div>
+            <div class="row" style="margin-top:8px">
+              <button class="sec sm" onclick="openGroups(${i})">📂 Scegli gruppi</button>
+              <button class="sec sm" onclick="checkOne(${i}, true)">🔍 Testa</button>
+              <label class="row muted" style="gap:4px;cursor:pointer" title="Prefisso nome lista davanti al gruppo">
+                <input type="checkbox" style="width:auto" ${s.pf ? 'checked' : ''} onchange="D.s[${i}].pf=this.checked?1:0;saveAndRefresh()">
+                prefisso gruppo
+              </label>
+              <span style="flex:1"></span>
+              <button class="sec sm" onclick="moveSrc(${i},-1)" title="Sposta su">↑</button>
+              <button class="sec sm" onclick="moveSrc(${i},1)" title="Sposta giù">↓</button>
+              <button class="sec sm" onclick="toggleEdit(${i})">Modifica</button>
+              <button class="danger sm" onclick="delSrc(${i})">Elimina</button>
+            </div>
+            <div id="edit-${i}" class="${OPEN.edit === i ? '' : 'hidden'}">${OPEN.edit === i ? renderEditHtml(i) : ''}</div>
+            <div id="grp-${i}" class="${OPEN.groups === i ? '' : 'hidden'}">${OPEN.groups === i && GRP_CACHE[i] ? renderGroupsHtml(i) : ''}</div>
+          </div>
+        </div>
       </div>
-      <small id="t${i}" style="display:block"></small><div id="e${i}"></div><div id="g${i}"></div><div id="c${i}"></div>
-    </div>`).join('') || '<small>Nessuna lista ancora.</small>';
-  $('eg').innerHTML = (D.g || []).map((g, i) => `<div class="row"><small style="flex:1;word-break:break-all">${esc(g)}</small><button class="s" onclick="D.g.splice(${i},1);render()">✕</button></div>`).join('');
-  $('pn').value = D.n || 3;
-  drawPool();
-  upd();
+    `);
+  });
+
+  $('list').innerHTML = rows.join('') || '<div class="card muted">Nessuna lista trovata con questo filtro.</div>';
+  renderStats();
 }
 
-async function groups(i) {
-  const s = D.s[i], el = $('g' + i);
-  el.textContent = 'Carico i gruppi…';
-  const r = await fetch(`/api/playlist?groups=0&c=${await enc({ s: [strip(s)], g: [] })}`);
-  if (!r.ok) { el.textContent = 'Errore: ' + (await r.text()); return; }
-  const g = await r.json();
-  s.x = s.x || [];
-  el.innerHTML = '<div class="grp">' +
-    Object.entries(g).sort().map(([n, c]) =>
-      `<label><input type="checkbox" data-n="${esc(n)}" ${s.x.includes(n) ? '' : 'checked'} onchange="tg(${i},this)"><span class="gn">${esc(n)}</span><small>(${c})</small></label>`
-    ).join('') + '</div><small>Spunta = incluso. Il link si aggiorna da solo.</small>';
-}
-function tg(i, e) {
-  const s = D.s[i], n = e.dataset.n;
-  s.x = (s.x || []).filter((v) => v !== n);
-  if (!e.checked) s.x.push(n);
-  upd();
-}
-const strip = (s) => { const { o, ...r } = s; return r; };
-const CH = {};
-
-// Modifica nome, indirizzo e credenziali della lista
-function edit(i) {
-  const s = D.s[i], el = $('e' + i);
-  if (el.innerHTML) { el.innerHTML = ''; return; }
-  const f = (id, v, ph) => `<input id="${id}${i}" value="${esc(v || '')}" placeholder="${ph}">`;
-  el.innerHTML = f('en', s.n, 'Nome lista') + f('eu', s.u, 'URL / server / portale') +
-    (s.t === 'xtream' ? f('ea', s.a, 'Username') + f('ep', s.p, 'Password') : '') +
-    (s.t === 'stalker' ? f('em', s.m, 'MAC') : '') +
-    `<button onclick="applyEdit(${i})">Applica</button>`;
-}
-function applyEdit(i) {
-  const s = D.s[i], g = (id) => $(id + i).value.trim();
-  s.n = g('en') || s.n;
-  s.u = g('eu') || s.u;
-  if (s.t === 'xtream') { s.a = g('ea'); s.p = g('ep'); }
-  if (s.t === 'stalker') s.m = g('em').toUpperCase();
-  render();
+function toggleSrc(i, checked) {
+  D.s[i].e = checked ? 1 : 0;
+  const card = $('card-' + i);
+  if (card) card.classList.toggle('picked', checked);
+  saveAndRefresh();
 }
 
-// Modifica dei singoli canali (nome, tvg-id, gruppo, logo): richiede la sincronizzazione
-function chans(i) {
-  const el = $('c' + i);
-  if (el.innerHTML) { el.innerHTML = ''; return; }
-  if (!cloud) { el.textContent = 'La modifica dei canali richiede la sincronizzazione ☁️ (database collegato e accesso con la password).'; return; }
-  el.innerHTML = `<div class="row"><input id="cq${i}" placeholder="Cerca nome, id o gruppo" style="flex:1" onkeydown="if(event.key==='Enter')cgo(${i})"><label><input type="checkbox" id="cb${i}">senza tvg-id</label><button onclick="cgo(${i})">Cerca</button></div><div id="cr${i}"><small>Cerca un canale oppure spunta “senza tvg-id”.</small></div>`;
-}
-async function cgo(i) {
-  const s = D.s[i], out = $('cr' + i);
-  out.textContent = 'Carico…';
-  const t = await enc({ s: [strip(s)], g: [] });
-  const r = await fetch(`/api/playlist?channels=0&q=${encodeURIComponent($('cq' + i).value)}&bad=${$('cb' + i).checked ? 1 : 0}&c=${t}`);
-  if (!r.ok) { out.textContent = 'Errore: ' + (await r.text()); return; }
-  const { total, items } = await r.json();
-  const ov = s.o || {};
-  out.innerHTML = `<small>${total} canali trovati${total > items.length ? ', mostro i primi ' + items.length + ': affina la ricerca' : ''}</small>` +
-    items.map((c) => {
-      CH[i + c.h] = c;
-      const o = ov[c.h] || {}, v = (f) => esc(o[f] !== undefined ? o[f] : c[f]);
-      return `<div class="card" style="padding:8px" id="r${i}${c.h}"><small>${esc(c.n)}${ov[c.h] ? ' ✎' : ''}</small>
-        <input data-f="n" value="${v('n')}" placeholder="Nome"><input data-f="i" value="${v('i')}" placeholder="tvg-id"><input data-f="g" value="${v('g')}" placeholder="Gruppo"><input data-f="l" value="${v('l')}" placeholder="Logo (URL)">
-        <button onclick="sch(${i},'${c.h}')">Salva</button><button class="s" onclick="rch(${i},'${c.h}')">Ripristina</button></div>`;
-    }).join('');
-}
-function sch(i, h) {
-  const s = D.s[i], o = CH[i + h], card = $('r' + i + h), ov = {};
-  card.querySelectorAll('input').forEach((e) => { if (e.value !== o[e.dataset.f]) ov[e.dataset.f] = e.value; });
-  s.o = s.o || {};
-  if (Object.keys(ov).length) s.o[h] = ov; else delete s.o[h];
-  upd();
-  card.querySelector('small').textContent = o.n + (s.o[h] ? ' ✎ salvato' : '');
-}
-function rch(i, h) { delete (D.s[i].o || {})[h]; upd(); cgo(i); }
-
-function del(i) {
-  if (confirm('Eliminare questa lista?')) { D.s.splice(i, 1); render(); }
-}
-function ty() {
-  const t = $('t').value;
-  $('us').hidden = $('pw').hidden = t !== 'xtream';
-  $('m').hidden = t !== 'stalker';
-  $('u').placeholder = t === 'm3u' ? 'URL lista M3U' : t === 'xtream' ? 'Server (http://host:porta)' : 'Portale (http://host/c/)';
-}
-function readNew() {
-  const t = $('t').value;
-  const s = { t, n: $('n').value || t, u: $('u').value.trim(), x: [], e: 1 };
-  if (!s.u) { alert('Inserisci l’URL'); return null; }
-  if (t === 'xtream') { s.a = $('us').value.trim(); s.p = $('pw').value.trim(); }
-  if (t === 'stalker') s.m = $('m').value.trim().toUpperCase();
-  return s;
-}
-function add() {
-  const s = readNew();
-  if (!s) return;
-  D.s.push(s);
-  ['n', 'u', 'us', 'pw', 'm'].forEach((x) => ($(x).value = ''));
-  $('tn').textContent = '';
-  render();
-}
-function mv(i, d) {
+function moveSrc(i, d) {
   const j = i + d;
   if (j < 0 || j >= D.s.length) return;
   [D.s[i], D.s[j]] = [D.s[j], D.s[i]];
-  render();
+  if (OPEN.groups === i) OPEN.groups = j;
+  else if (OPEN.groups === j) OPEN.groups = i;
+  if (OPEN.edit === i) OPEN.edit = j;
+  else if (OPEN.edit === j) OPEN.edit = i;
+  [GRP_CACHE[i], GRP_CACHE[j]] = [GRP_CACHE[j], GRP_CACHE[i]];
+  saveAndRefresh();
+  renderList();
 }
 
-// Prova di una lista: account Xtream (stato/scadenza/connessioni) oppure lettura di M3U/Stalker
-async function runTest(s, el) {
-  el.textContent = 'Test in corso…';
-  try {
-    const r = await fetch(`/api/playlist?test=1&c=${await enc({ s: [strip(s)], g: [] })}`);
-    el.textContent = r.ok ? await r.text() : 'Errore: ' + (await r.text());
-  } catch { el.textContent = '❌ Server non raggiungibile'; }
+function delSrc(i) {
+  if (!confirm(`Eliminare la lista "${D.s[i].n}"?`)) return;
+  D.s.splice(i, 1);
+  if (OPEN.groups === i) OPEN.groups = null;
+  if (OPEN.edit === i) OPEN.edit = null;
+  delete GRP_CACHE[i];
+  saveAndRefresh();
+  renderList();
 }
-const tst = (i) => runTest(D.s[i], $('t' + i));
-function tstNew() { const s = readNew(); if (s) runTest(s, $('tn')); }
 
-// Stato delle liste Xtream: ogni lista viene controllata per conto suo, così una lenta o in errore non blocca le altre
-const ST = {};
-const stKey = (s) => s.u + '|' + s.a;
-const fmtDate = (ms) => new Date(ms).toLocaleDateString('it-IT');
-const stLine = (x) => {
-  if (!x) return '';
-  if (x.loading) return '⏳ controllo…';
-  if (x.err) return '⚠️ ' + x.err;
-  const d = x.exp ? fmtDate(x.exp) : '';
-  if (x.ok) return `🟢 libera ${x.cons}/${x.max}${d ? ' · scade ' + d : ''}`;
-  if (x.why === 'occupata') return `🟡 occupata ${x.cons}/${x.max}${d ? ' · scade ' + d : ''}`;
-  return `🔴 ${x.why}${d ? ' (' + d + ')' : ''}`;
-};
-const badge = (s) => stLine(ST[stKey(s)]);
-function upBadges() {
-  D.s.forEach((s, i) => { const el = $('b' + i); if (el) el.textContent = badge(s); });
+function renderEditHtml(i) {
+  const s = D.s[i];
+  return `
+    <div class="subcard" style="display:grid;gap:6px">
+      <input id="en-${i}" value="${esc(s.n)}" placeholder="Nome">
+      <input id="eu-${i}" value="${esc(s.u)}" placeholder="Server URL">
+      <div class="row">
+        <input id="ea-${i}" value="${esc(s.a)}" placeholder="Username" style="flex:1">
+        <input id="ep-${i}" value="${esc(s.p)}" placeholder="Password" style="flex:1">
+      </div>
+      <div class="row">
+        <button class="sm" onclick="applyEdit(${i})">Salva modifiche</button>
+        <button class="sec sm" onclick="OPEN.edit=null;renderList()">Chiudi</button>
+      </div>
+    </div>
+  `;
 }
-function drawPool() {
-  const xs = D.s.filter((s) => s.t === 'xtream'), out = $('ps');
-  if (!xs.length) { out.textContent = 'Nessuna lista Xtream.'; return; }
-  let used = 0, ok = 0, done = 0;
-  const rows = xs.map((s) => {
-    const x = ST[stKey(s)];
-    let role = '';
-    if (x && !x.loading) done++;
-    if (x && x.ok) {
-      ok++;
-      role = !s.pl ? 'fuori dal pool' : used < (D.n || 3) ? (used++, 'nella playlist') : 'di riserva';
-    }
-    return `<div>${stLine(x)} <b>${esc(s.n)}</b>${role ? ' <small>→ ' + role + '</small>' : ''}</div>`;
-  });
-  out.innerHTML = `<small>${done}/${xs.length} controllate, ${ok} disponibili</small>` + rows.join('');
+
+function toggleEdit(i) {
+  OPEN.edit = OPEN.edit === i ? null : i;
+  renderList();
 }
-async function chk(fresh = true) {
-  const xs = D.s.filter((s) => s.t === 'xtream');
-  xs.forEach((s) => (ST[stKey(s)] = { loading: true }));
-  upBadges();
-  drawPool();
-  await Promise.all(xs.map(async (s) => {
-    const ac = new AbortController(), tm = setTimeout(() => ac.abort(), 20000);
+
+function applyEdit(i) {
+  const s = D.s[i];
+  s.n = $('en-' + i).value.trim() || s.n;
+  s.u = $('eu-' + i).value.trim().replace(/\/+$/, '') || s.u;
+  s.a = $('ea-' + i).value.trim();
+  s.p = $('ep-' + i).value.trim();
+  OPEN.edit = null;
+  delete GRP_CACHE[i];
+  saveAndRefresh();
+  renderList();
+}
+
+// ---- Scelta Gruppi ----
+async function openGroups(i) {
+  if (OPEN.groups === i) {
+    OPEN.groups = null;
+    renderList();
+    return;
+  }
+  OPEN.groups = i;
+  renderList();
+  const box = $('grp-' + i);
+  if (!GRP_CACHE[i]) {
+    box.classList.remove('hidden');
+    box.innerHTML = '<div class="subcard muted">⏳ Caricamento gruppi da Xtream in corso…</div>';
     try {
-      const t = await enc({ s: [{ t: 'xtream', n: s.n, u: s.u, a: s.a, p: s.p }], g: [] });
-      const r = await fetch(`/api/playlist?status=1${fresh ? '&fresh=1' : ''}&c=${t}`, { signal: ac.signal });
-      const ct = r.headers.get('content-type') || '';
-      if (!r.ok) ST[stKey(s)] = { err: 'errore del server (' + r.status + ')' };
-      else if (!ct.includes('json')) ST[stKey(s)] = { err: 'il server non ha il controllo stato: aggiorna playlist.js e _lib.js su GitHub' };
-      else ST[stKey(s)] = (await r.json())[0] || { err: 'risposta vuota' };
+      const s = D.s[i];
+      const tok = await enc({ s: [{ t: 'xtream', n: s.n, u: s.u, a: s.a, p: s.p }] });
+      const r = await fetch(`/api/playlist?groups=0&c=${tok}`);
+      if (!r.ok) throw new Error(await r.text());
+      const data = await r.json();
+      GRP_CACHE[i] = data.groups || {};
     } catch (e) {
-      ST[stKey(s)] = { err: e.name === 'AbortError' ? 'nessuna risposta in 20 secondi' : 'server non raggiungibile' };
+      box.innerHTML = `<div class="subcard" style="color:var(--err)">❌ Impossibile leggere i gruppi: ${esc(e.message || e)}</div>`;
+      return;
     }
-    clearTimeout(tm);
-    upBadges();
-    drawPool();
-  }));
+  }
+  box.innerHTML = renderGroupsHtml(i);
 }
 
-async function imp() {
-  try {
-    const k = D.k;
-    D = await dec(new URL($('imp').value.trim()).searchParams.get('c'));
-    D.k = k;
-    $('imp').value = '';
-    render();
-  } catch { alert('Link non valido'); }
+function isGroupChecked(s, name) {
+  if (s.gm === 'in') return (s.gr || []).includes(name);
+  return !(s.x || []).includes(name);
 }
-ty();
+
+function renderGroupsHtml(i) {
+  const s = D.s[i];
+  const groups = GRP_CACHE[i] || {};
+  const names = Object.keys(groups).sort((a, b) => a.localeCompare(b, 'it'));
+  const needle = (GRP_SEARCH[i] || '').trim().toLowerCase();
+  const filtered = needle ? names.filter((n) => n.toLowerCase().includes(needle)) : names;
+  const selectedCount = names.filter((n) => isGroupChecked(s, n)).length;
+  const isWhitelist = s.gm === 'in';
+
+  return `
+    <div class="subcard">
+      <div class="between">
+        <div class="tabs">
+          <button class="tab ${isWhitelist ? 'active' : ''}" onclick="setGroupMode(${i}, 'in')">✓ Solo i gruppi spuntati (consigliato)</button>
+          <button class="tab ${!isWhitelist ? 'active' : ''}" onclick="setGroupMode(${i}, 'ex')">Tutti tranne deselezionati</button>
+        </div>
+        <span class="muted">${selectedCount} / ${names.length} gruppi inclusi</span>
+      </div>
+
+      <div class="row" style="margin-top:8px">
+        <input placeholder="Cerca gruppo (es. ITA, SPORT, SKY)..." value="${esc(GRP_SEARCH[i] || '')}" style="flex:1;min-width:180px" oninput="GRP_SEARCH[${i}]=this.value;refreshGroupsBox(${i})">
+        <button class="sec sm" onclick="bulkGroups(${i}, true, true)">Seleziona filtrati</button>
+        <button class="sec sm" onclick="bulkGroups(${i}, false, true)">Deseleziona filtrati</button>
+        <button class="sec sm" onclick="bulkGroups(${i}, true, false)">Tutti</button>
+        <button class="sec sm" onclick="bulkGroups(${i}, false, false)">Nessuno</button>
+      </div>
+
+      <div class="grp-list">
+        ${filtered.map((n) => {
+          const ch = groups[n];
+          const chk = isGroupChecked(s, n) ? 'checked' : '';
+          return `
+            <label class="grp-item">
+              <input type="checkbox" ${chk} onchange="toggleGroup(${i}, ${JSON.stringify(n)}, this.checked)">
+              <span class="grp-name">${esc(n)}</span>
+              ${ch !== null && ch !== undefined ? `<span class="muted">${ch}</span>` : ''}
+            </label>
+          `;
+        }).join('') || '<div class="muted" style="padding:8px">Nessun gruppo corrisponde alla ricerca.</div>'}
+      </div>
+
+      <div class="between">
+        <button class="sec sm" onclick="copyGroupsToOthers(${i})">📋 Copia questi nomi gruppo sulle altre liste selezionate</button>
+        <button class="sec sm" onclick="OPEN.groups=null;renderList()">Chiudi</button>
+      </div>
+    </div>
+  `;
+}
+
+function refreshGroupsBox(i) {
+  const box = $('grp-' + i);
+  if (box) box.innerHTML = renderGroupsHtml(i);
+  const hostLine = $('card-' + i)?.querySelector('.src-host b');
+  if (hostLine) hostLine.textContent = groupsSummary(D.s[i]);
+}
+
+function setGroupMode(i, mode) {
+  const s = D.s[i];
+  const names = Object.keys(GRP_CACHE[i] || {});
+  if (mode === 'in' && s.gm !== 'in') {
+    const ex = new Set(s.x || []);
+    s.gr = names.filter((n) => !ex.has(n));
+    s.gm = 'in';
+  } else if (mode === 'ex' && s.gm === 'in') {
+    const inc = new Set(s.gr || []);
+    s.x = names.filter((n) => !inc.has(n));
+    s.gm = 'ex';
+  }
+  saveAndRefresh();
+  refreshGroupsBox(i);
+}
+
+function toggleGroup(i, name, checked) {
+  const s = D.s[i];
+  if (s.gm === 'in') {
+    s.gr = (s.gr || []).filter((g) => g !== name);
+    if (checked) s.gr.push(name);
+  } else {
+    s.x = (s.x || []).filter((g) => g !== name);
+    if (!checked) s.x.push(name);
+  }
+  saveAndRefresh();
+  refreshGroupsBox(i);
+}
+
+function bulkGroups(i, check, onlyFiltered) {
+  const s = D.s[i];
+  const names = Object.keys(GRP_CACHE[i] || {});
+  const needle = (GRP_SEARCH[i] || '').trim().toLowerCase();
+  const targets = onlyFiltered && needle ? names.filter((n) => n.toLowerCase().includes(needle)) : names;
+
+  if (s.gm === 'in') {
+    const set = new Set(s.gr || []);
+    targets.forEach((n) => (check ? set.add(n) : set.delete(n)));
+    s.gr = [...set];
+  } else {
+    const set = new Set(s.x || []);
+    targets.forEach((n) => (check ? set.delete(n) : set.add(n)));
+    s.x = [...set];
+  }
+  saveAndRefresh();
+  refreshGroupsBox(i);
+}
+
+function copyGroupsToOthers(i) {
+  const src = D.s[i];
+  let count = 0;
+  D.s.forEach((other, idx) => {
+    if (idx === i || other.e === 0) return;
+    other.gm = src.gm || 'ex';
+    other.gr = [...(src.gr || [])];
+    other.x = [...(src.x || [])];
+    count++;
+  });
+  saveAndRefresh();
+  renderList();
+  alert(count ? `Selezione gruppi copiata su ${count} altre liste selezionate.` : 'Nessuna altra lista selezionata su cui copiare.');
+}
+
+// ---- Modalità Manuale / Pool ----
+function setMode(m) {
+  D.mode = m === 'pool' ? 'pool' : 'manual';
+  saveAndRefresh();
+}
+
+function renderMode() {
+  const isPool = D.mode === 'pool';
+  $('modeManual').classList.toggle('active', !isPool);
+  $('modePool').classList.toggle('active', isPool);
+  $('radManual').checked = !isPool;
+  $('radPool').checked = isPool;
+  $('poolSettings').classList.toggle('hidden', !isPool);
+  $('manualSummary').classList.toggle('hidden', isPool);
+  $('poolN').value = D.n || 3;
+
+  const selected = D.s.filter((s) => s.e !== 0);
+  if (!isPool) {
+    $('manualSummary').innerHTML = selected.length
+      ? `<b>Liste che verranno unite (${selected.length}):</b> ` + selected.map((s) => `<span class="badge b-info">${esc(s.n)}</span>`).join(' ')
+      : '<span class="muted">Nessuna lista spuntata sopra. Spunta le 2 o 3 liste che vuoi unire.</span>';
+  } else {
+    const limit = Math.max(1, +D.n || 3);
+    let used = 0;
+    const html = selected.map((s) => {
+      const st = ST[stKey(s)];
+      let note = '⏳ stato da controllare';
+      let cls = '';
+      if (st && !st.loading) {
+        if (st.ok) {
+          if (used < limit) { used++; note = '✓ entrerà nella playlist'; cls = 'b-ok'; }
+          else { note = 'di riserva (libera)'; cls = ''; }
+        } else {
+          note = 'esclusa (' + (st.why || 'non disponibile') + ')';
+          cls = 'b-err';
+        }
+      }
+      return `<div class="row" style="margin:4px 0"><span class="badge ${cls}">${esc(note)}</span> <b>${esc(s.n)}</b></div>`;
+    }).join('');
+    $('poolPreview').innerHTML = selected.length ? html : '<span class="muted">Spunta le liste da far partecipare al pool.</span>';
+  }
+}
+
+// ---- Controllo stato Xtream ----
+async function checkOne(i, fresh = true) {
+  const s = D.s[i];
+  const key = stKey(s);
+  ST[key] = { loading: true };
+  updateOneBadge(i);
+  renderStats();
+  renderMode();
+
+  try {
+    const tok = await enc({ s: [{ t: 'xtream', n: s.n, u: s.u, a: s.a, p: s.p }] });
+    const r = await fetch(`/api/playlist?status=1${fresh ? '&fresh=1' : ''}&c=${tok}`, { signal: AbortSignal.timeout(15000) });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const arr = await r.json();
+    ST[key] = arr[0] || { err: 'risposta vuota' };
+  } catch (e) {
+    ST[key] = { err: e.name === 'TimeoutError' ? 'timeout >15s' : 'server non raggiungibile' };
+  }
+
+  updateOneBadge(i);
+  renderStats();
+  renderMode();
+}
+
+function updateOneBadge(i) {
+  const el = $('badge-' + i);
+  if (el && D.s[i]) el.innerHTML = statusBadgeHtml(ST[stKey(D.s[i])]);
+}
+
+async function chkAll(fresh = true) {
+  if (!D.s.length) return;
+  $('btnChkAll').disabled = true;
+  await Promise.all(D.s.map((_, i) => checkOne(i, fresh)));
+  $('btnChkAll').disabled = false;
+  if (filterMode !== 'all') renderList();
+}
+
+// ---- Aggiunta manuale ----
+function readNewForm() {
+  const n = $('newName').value.trim();
+  const u = $('newUrl').value.trim().replace(/\/+$/, '');
+  const a = $('newUser').value.trim();
+  const p = $('newPass').value.trim();
+  if (!u || !a || !p) {
+    alert('Inserisci Server URL, Username e Password.');
+    return null;
+  }
+  return { t: 'xtream', n: n || u.replace(/^https?:\/\//, ''), u, a, p, e: 1, pf: 1, gm: 'ex', x: [], gr: [] };
+}
+
+function addManual() {
+  const s = readNewForm();
+  if (!s) return;
+  D.s.push(s);
+  ['newName', 'newUrl', 'newUser', 'newPass'].forEach((id) => ($(id).value = ''));
+  $('newTestOut').textContent = '';
+  $('addBox').open = false;
+  saveAndRefresh();
+  renderList();
+  checkOne(D.s.length - 1, true);
+}
+
+async function testNew() {
+  const s = readNewForm();
+  if (!s) return;
+  const out = $('newTestOut');
+  out.textContent = '⏳ Test in corso…';
+  try {
+    const tok = await enc({ s: [s] });
+    const r = await fetch(`/api/playlist?test=1&c=${tok}`);
+    out.textContent = r.ok ? await r.text() : '❌ Errore: ' + (await r.text());
+  } catch {
+    out.textContent = '❌ Server non raggiungibile';
+  }
+}
+
+// ---- Verifica playlist reale ----
+async function verifyPlaylist() {
+  const url = $('outM3u').value;
+  if (!url) {
+    alert('Seleziona prima almeno una lista.');
+    return;
+  }
+  const box = $('verifyOut');
+  box.classList.remove('hidden');
+  box.innerHTML = '⏳ Sto interrogando le liste selezionate e costruendo la playlist di test…';
+  $('btnVerify').disabled = true;
+
+  try {
+    const q = new URL(url).search;
+    const r = await fetch(`/api/playlist${q}&preview=1`);
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || 'Errore verifica');
+
+    const usedHtml = (j.used || []).map((u) => `<span class="badge b-ok">✓ ${esc(u.n)}: ${u.channels} canali in ${u.groups} gruppi</span>`).join(' ');
+    const skipHtml = (j.skipped || []).map((x) => `<span class="badge b-warn">⏭️ ${esc(x.n)}: ${esc(x.reason)}</span>`).join(' ');
+    const errHtml = (j.errors || []).map((e) => `<span class="badge b-err">❌ ${esc(e.n)}: ${esc(e.error)}</span>`).join(' ');
+    const grpHtml = (j.sampleGroups || []).map((g) => `<span class="badge">${esc(g.name)} (${g.channels})</span>`).join(' ');
+
+    box.innerHTML = `
+      <div style="font-weight:700;margin-bottom:6px">
+        ${j.ok ? `✅ Tutto funziona! ${j.totalChannels} canali totali in ${j.totalGroups} gruppi.` : '⚠️ La playlist al momento non produce canali.'}
+      </div>
+      <div class="preview-grid">${usedHtml} ${skipHtml} ${errHtml}</div>
+      ${grpHtml ? `<div class="muted" style="margin-top:8px">Principali gruppi inclusi:</div><div class="preview-grid">${grpHtml}</div>` : ''}
+    `;
+  } catch (e) {
+    box.innerHTML = `<span style="color:var(--err)">❌ Errore durante la verifica: ${esc(e.message || e)}</span>`;
+  } finally {
+    $('btnVerify').disabled = false;
+  }
+}
+
+function copyEl(id, btn) {
+  const val = $(id).value;
+  if (!val) return;
+  navigator.clipboard.writeText(val);
+  const old = btn.textContent;
+  btn.textContent = 'Copiato ✓';
+  setTimeout(() => (btn.textContent = old), 1500);
+}
+
+function openLink() {
+  const val = $('outM3u').value;
+  if (val) window.open(val, '_blank');
+}
+
+function renderAll() {
+  renderList();
+  renderMode();
+  updateLinks();
+}
+
 boot();
 </script>
 </body>

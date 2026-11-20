@@ -1,56 +1,65 @@
-// Legge le liste dal Gist dell'IPTV Manager e le converte nel formato di questa app.
-// Variabili su Vercel: GIST_ID (obbligatoria), GIST_TOKEN (consigliata), GIST_FILE (default iptv-manager.json)
+// Importa le sole liste Xtream da un GitHub Gist.
+// Variabili su Vercel: GIST_ID (obbligatoria), GIST_TOKEN (consigliata per Gist privati o rate limit), GIST_FILE (default iptv-manager.json)
 const T = (v) => String(v ?? '').trim();
+const cleanUrl = (u) => T(u).replace(/\/+$/, '');
 
-// Un link che punta a questo stesso sito (o a un altro deploy dell'app) non va importato: si includerebbe da solo
-const isSelf = (u, host) => {
-  try {
-    const x = new URL(u);
-    return /\/(playlist\.m3u|api\/playlist)$/.test(x.pathname) && (x.hostname === host || x.hostname.endsWith('.vercel.app'));
-  } catch {
-    return false;
+function extractXtream(d) {
+  const list = Array.isArray(d) ? d : Array.isArray(d && d.xtream) ? d.xtream : [];
+  const out = [];
+  for (const x of list) {
+    if (!x || typeof x !== 'object') continue;
+    const u = cleanUrl(x.host || x.url || x.server || x.u);
+    const a = T(x.user || x.username || x.a);
+    const p = T(x.pass || x.password || x.p);
+    if (!u || !a || !p) continue;
+    const n = T(x.name || x.title || x.n) || u.replace(/^https?:\/\//, '');
+    const gid = T(x.id || x.gid) || `x-${u}-${a}`;
+    out.push({ gid, t: 'xtream', n, u, a, p });
   }
-};
-// Le pagine "blob" di GitHub sono HTML: si scarica la versione raw
-const raw = (u) => T(u).replace(/^(https:\/\/github\.com\/[^/]+\/[^/]+)\/blob\//, '$1/raw/');
+  return out;
+}
 
 export default async function handler(req, res) {
+  res.setHeader('Cache-Control', 'no-store');
   const pw = process.env.ADMIN_PASSWORD;
-  if (!pw || req.headers['x-admin'] !== pw) return res.status(401).send('Password errata');
+  if (!pw || req.headers['x-admin'] !== pw) {
+    return res.status(401).json({ ok: false, error: 'Password errata' });
+  }
+
   const id = process.env.GIST_ID;
-  if (!id) return res.status(204).end();
+  if (!id) {
+    return res.json({ ok: true, configured: false, s: [], message: 'Variabile GIST_ID non impostata su Vercel.' });
+  }
+
   try {
     const H = {
       'User-Agent': 'iptv-hub',
       Accept: 'application/vnd.github+json',
       ...(process.env.GIST_TOKEN && { Authorization: 'Bearer ' + process.env.GIST_TOKEN }),
     };
-    const r = await fetch(`https://api.github.com/gists/${id}`, { headers: H });
-    if (!r.ok) throw new Error('GitHub HTTP ' + r.status);
-    const name = process.env.GIST_FILE || 'iptv-manager.json';
-    const f = ((await r.json()).files || {})[name];
-    if (!f) throw new Error(`File ${name} non trovato nel Gist`);
-    const d = JSON.parse(f.truncated ? await (await fetch(f.raw_url, { headers: H })).text() : f.content);
+    const r = await fetch(`https://api.github.com/gists/${id}`, { headers: H, cache: 'no-store' });
+    if (!r.ok) throw new Error('GitHub API HTTP ' + r.status);
 
-    const host = req.headers.host;
-    const s = [], skipped = [], epgIds = new Set();
-    for (const x of d.xtream || []) {
-      s.push({ gid: x.id || `x-${T(x.host)}-${T(x.user)}`, t: 'xtream', n: T(x.name) || T(x.host), u: T(x.host).replace(/\/+$/, ''), a: T(x.user), p: T(x.pass), pl: 1 });
-      if (x.epg) epgIds.add(x.epg);
+    const gist = await r.json();
+    const files = gist.files || {};
+    const wanted = process.env.GIST_FILE || 'iptv-manager.json';
+    const file = files[wanted] || (Object.keys(files).length === 1 ? Object.values(files)[0] : null);
+    if (!file) {
+      throw new Error(`File "${wanted}" non trovato nel Gist (trovati: ${Object.keys(files).join(', ') || 'nessuno'})`);
     }
-    for (const m of d.m3u || []) {
-      if (isSelf(m.url, host)) { skipped.push(T(m.name)); continue; }
-      s.push({ gid: m.id || `m-${T(m.url)}`, t: 'm3u', n: T(m.name) || T(m.url), u: T(m.url) });
-      if (m.epg) epgIds.add(m.epg);
-    }
-    // Stalker: importate ma spente (per ora non si usano)
-    for (const k of d.stalker || []) {
-      s.push({ gid: k.id || `s-${T(k.url)}-${T(k.mac)}`, t: 'stalker', n: T(k.name) || T(k.url), u: T(k.url), m: T(k.mac).toUpperCase(), off: 1 });
-    }
-    // EPG: solo quelli collegati alle liste (importarli tutti renderebbe l'EPG unito enorme)
-    const g = (d.epg || []).filter((e) => epgIds.has(e.id) && e.url).map((e) => raw(e.url));
-    res.json({ s, g: [...new Set(g)], skipped });
+
+    const rawText = file.truncated ? await (await fetch(file.raw_url, { headers: H })).text() : file.content;
+    const parsed = JSON.parse(rawText);
+    const s = extractXtream(parsed);
+
+    return res.json({
+      ok: true,
+      configured: true,
+      file: file.filename || wanted,
+      total: s.length,
+      s,
+    });
   } catch (e) {
-    res.status(502).send(String(e.message || e));
+    return res.status(502).json({ ok: false, error: String(e.message || e) });
   }
 }

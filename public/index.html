@@ -758,7 +758,7 @@ function renderGroupsHtml(i) {
           const chk = isGroupChecked(s, n) ? 'checked' : '';
           return `
             <label class="grp-item">
-              <input type="checkbox" ${chk} onchange="toggleGroup(${i}, ${JSON.stringify(n)}, this.checked)">
+              <input type="checkbox" data-g="${esc(n)}" ${chk} onchange="toggleGroupEl(this, ${i})">
               <span class="grp-name">${esc(n)}</span>
               ${ch !== null && ch !== undefined ? `<span class="muted">${ch}</span>` : ''}
             </label>
@@ -795,6 +795,13 @@ function setGroupMode(i, mode) {
   }
   saveAndRefresh();
   refreshGroupsBox(i);
+}
+
+// Il nome del gruppo passa da data-g (escapato) e non dentro l'handler inline:
+// con le virgolette del nome l'attributo onchange si troncava e la selezione
+// non veniva mai salvata (la casella tornava vuota riaprendo il pannello).
+function toggleGroupEl(el, i) {
+  toggleGroup(i, el.dataset.g, el.checked);
 }
 
 function toggleGroup(i, name, checked) {
@@ -1082,7 +1089,14 @@ async function verifyPlaylist() {
     const j = await r.json();
     if (!r.ok) throw new Error(j.error || 'Errore verifica');
 
-    const usedHtml = (j.used || []).map((u) => `<span class="badge b-ok">✓ ${esc(u.n)}: ${u.channels} canali in ${u.groups} gruppi</span>`).join(' ');
+    const usedHtml = (j.used || [])
+      .map((u) => {
+        const warn = u.warning ? ` ⚠️ ${esc(u.warning)}` : '';
+        return u.channels
+          ? `<span class="badge b-ok">✓ ${esc(u.n)}: ${u.channels} canali in ${u.groups} gruppi${warn}</span>`
+          : `<span class="badge b-err">❌ ${esc(u.n)}: 0 canali${warn}</span>`;
+      })
+      .join(' ');
     const skipHtml = (j.skipped || []).map((x) => `<span class="badge b-warn">⏭️ ${esc(x.n)}: ${esc(x.reason)}</span>`).join(' ');
     const errHtml = (j.errors || []).map((e) => `<span class="badge b-err">❌ ${esc(e.n)}: ${esc(e.error)}</span>`).join(' ');
     const grpHtml = (j.sampleGroups || []).map((g) => `<span class="badge">${esc(g.name)} (${g.channels})</span>`).join(' ');

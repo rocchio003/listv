@@ -109,13 +109,56 @@ export async function fetchXtreamGroups(s) {
 // ---- Filtro gruppi per sorgente ----
 // gm === 'in' -> whitelist (include SOLO i gruppi presenti in gr)
 // altrimenti -> blacklist (include tutti TRANNE quelli in x)
-export function groupAllowed(s, groupName) {
+//
+// ATTENZIONE: i nomi salvati in gr/x possono arrivare da DUE fonti diverse:
+// il group-title della M3U (get.php) oppure le category_name dell'API Xtream
+// (fallback di fetchXtreamGroups). Per questo il confronto è normalizzato
+// (maiuscole, spazi, accenti, separatori) e tollerante: prima si cercava
+// l'uguaglianza esatta e con un nome diverso la lista finiva con 0 canali.
+export const normGroup = (n) =>
+  String(n ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[|•·»«\/\\]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const groupMatch = (a, b) => a === b || (Math.min(a.length, b.length) >= 4 && (a.includes(b) || b.includes(a)));
+
+// Dato l'elenco dei gruppi realmente presenti nella lista, restituisce l'insieme
+// dei gruppi da tenere. `requested` è quanti nomi erano stati scelti.
+export function resolveAllowed(s, groups) {
+  const all = [...new Set(groups)];
   if (s.gm === 'in') {
-    const inc = s.gr || [];
-    return inc.includes(groupName);
+    const want = [...new Set((s.gr || []).map(normGroup).filter(Boolean))];
+    const allow = new Set();
+    if (!want.length) return { allow, requested: 0 };
+    for (const g of all) {
+      const ng = normGroup(g);
+      if (want.some((w) => groupMatch(w, ng))) allow.add(g);
+    }
+    return { allow, requested: want.length };
   }
-  const ex = s.x || [];
-  return !ex.includes(groupName);
+  const ex = new Set((s.x || []).map(normGroup));
+  return { allow: new Set(all.filter((g) => !ex.has(normGroup(g)))), requested: ex.size };
+}
+
+// Applica il filtro agli elementi di una lista. Se la lista è in whitelist ma
+// nessuno dei gruppi scelti esiste davvero (nome cambiato, provider diverso,
+// gruppi presi dalle categorie API), NON restituisce una playlist vuota:
+// include tutti i canali e lo segnala con fallenBack.
+export function filterSource(s, items) {
+  const groups = items.map((c) => c.group);
+  const { allow, requested } = resolveAllowed(s, groups);
+  let kept = items.filter((c) => allow.has(c.group));
+  const fallenBack = s.gm === 'in' && !kept.length && items.length > 0;
+  if (fallenBack) kept = items;
+  return { kept, allow, requested, fallenBack };
+}
+
+export function groupAllowed(s, groupName) {
+  return resolveAllowed(s, [groupName]).allow.has(groupName);
 }
 
 // ---- Archivio condiviso (Upstash Redis collegato da Vercel) ----

@@ -2,7 +2,7 @@ import {
   getCfg,
   collect,
   fetchXtreamGroups,
-  groupAllowed,
+  filterSource,
   infParts,
   uh,
   applyOv,
@@ -95,17 +95,22 @@ export default async function handler(req, res) {
         continue;
       }
       const lab = String(item.s.n || '').replace(/"/g, "'");
-      let count = 0;
+      const { kept, fallenBack } = filterSource(item.s, item.r);
       const gSet = new Set();
-      for (const c of item.r) {
-        if (!groupAllowed(item.s, c.group)) continue;
-        count++;
+      for (const c of kept) {
         const gOut = item.s.pf ? `${lab} | ${c.group}` : c.group;
         gSet.add(gOut);
         groupCounts[gOut] = (groupCounts[gOut] || 0) + 1;
       }
-      totalChannels += count;
-      used.push({ n: item.s.n, channels: count, groups: gSet.size });
+      totalChannels += kept.length;
+      used.push({
+        n: item.s.n,
+        channels: kept.length,
+        groups: gSet.size,
+        ...(fallenBack
+          ? { warning: 'i gruppi scelti non corrispondono: inclusi tutti i canali della lista' }
+          : {}),
+      });
     }
 
     const sortedGroups = Object.entries(groupCounts)
@@ -160,9 +165,15 @@ export default async function handler(req, res) {
         : inf.replace(/^#EXTINF:(-?[\d.]+)/, (m, d) => `#EXTINF:${d} group-title="${lab} | Senza gruppo"`);
     };
 
+    const { kept, fallenBack } = filterSource(s, o.r);
+    if (fallenBack) {
+      res.write(
+        `# NOTA ${lab}: i gruppi scelti non corrispondono a quelli della lista, inclusi tutti i canali\n`
+      );
+    }
+
     let chunk = '';
-    for (const c of o.r) {
-      if (!groupAllowed(s, c.group)) continue;
+    for (const c of kept) {
       chunk += formatInf(c) + '\n' + c.extra + c.url + '\n';
       if (chunk.length > 131072) {
         res.write(chunk);

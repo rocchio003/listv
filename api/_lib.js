@@ -18,10 +18,11 @@ export const getLong = (url) => get(url, {}, 35000);
 
 export const cleanBase = (u) => String(u || '').trim().replace(/\/+$/, '');
 
-// type=m3u -> solo canali live (niente film/serie). Se un pannello ignora il parametro,
-// le esclusioni manuali dei gruppi restano comunque attive come rete di sicurezza.
+// type=m3u_plus -> include group-title e attributi (necessari per i gruppi).
+// NB: type=m3u (solo live) su molti pannelli omette group-title e i canali finiscono
+// tutti in "Senza gruppo": per questo si usa m3u_plus.
 export const xtM3uUrl = (s) =>
-  `${cleanBase(s.u)}/get.php?username=${encodeURIComponent(s.a)}&password=${encodeURIComponent(s.p)}&type=m3u&output=ts`;
+  `${cleanBase(s.u)}/get.php?username=${encodeURIComponent(s.a)}&password=${encodeURIComponent(s.p)}&type=m3u_plus&output=ts`;
 
 export const xtEpgUrl = (s) =>
   `${cleanBase(s.u)}/xmltv.php?username=${encodeURIComponent(s.a)}&password=${encodeURIComponent(s.p)}`;
@@ -76,7 +77,7 @@ export async function collect(s) {
 }
 
 // Recupera i gruppi di una lista Xtream: prova da get.php (con conteggi reali),
-// con fallback istantaneo sulle API categorie Xtream se get.php fallisce o è vuoto.
+// con fallback sulle API categorie se get.php fallisce, è vuoto o non espone i gruppi.
 export async function fetchXtreamGroups(s) {
   try {
     const r = await get(xtM3uUrl(s), {}, 18000);
@@ -84,7 +85,11 @@ export async function fetchXtreamGroups(s) {
       const txt = await r.text();
       if (txt.includes('#EXTINF')) {
         const g = parseGroupsOnly(txt);
-        if (Object.keys(g).length) return { groups: g, source: 'm3u' };
+        const names = Object.keys(g);
+        // Se il provider non manda group-title, tutto finisce in "Senza gruppo":
+        // meglio le categorie live dell'API che un unico gruppo inutilizzabile.
+        const flat = names.length === 1 && names[0] === 'Senza gruppo';
+        if (names.length && !flat) return { groups: g, source: 'm3u' };
       }
     }
   } catch {}
@@ -97,6 +102,7 @@ export async function fetchXtreamGroups(s) {
   for (const c of cats) {
     if (c && c.category_name) groups[String(c.category_name)] = null;
   }
+  if (!Object.keys(groups).length) throw new Error('Nessun gruppo disponibile per questa lista');
   return { groups, source: 'api' };
 }
 

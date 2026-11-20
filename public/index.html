@@ -115,12 +115,12 @@ button.sm{padding:5px 9px;font-size:12.5px}
 .src-title{font-weight:700;font-size:15px}
 .src-host{font-size:12px;color:var(--muted);word-break:break-all}
 
-.mode-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-@media(max-width:600px){.mode-grid{grid-template-columns:1fr}}
+.mode-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:10px}
 .mode-opt{
   border:1px solid var(--line);border-radius:10px;padding:10px 12px;cursor:pointer;
-  background:var(--card2);text-align:left;display:flex;gap:8px;align-items:flex-start;width:100%;
-  color:var(--text);font-weight:400;
+  background:var(--card2);text-align:left;display:flex;gap:8px;align-items:flex-start;
+  width:100%;min-width:0;color:var(--text);font-weight:400;
+  white-space:normal;overflow-wrap:anywhere;
 }
 .mode-opt.active{border-color:var(--accent);background:var(--accent-bg)}
 .mode-opt input{width:auto;margin-top:3px}
@@ -139,6 +139,13 @@ button.sm{padding:5px 9px;font-size:12.5px}
 .grp-name{flex:1;overflow-wrap:anywhere;font-size:13px}
 
 .preview-grid{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.pick-list{display:flex;flex-wrap:wrap;gap:6px}
+.badge.pick{padding-right:3px;max-width:100%}
+.pick-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:190px}
+button.x{background:transparent;border:0;color:inherit;padding:2px 4px;margin:0;font-size:11px;line-height:1;font-weight:700;opacity:.7;border-radius:6px}
+button.x:hover{opacity:1;filter:none;background:rgba(128,128,128,.18)}
+.warnbox{background:var(--warn-bg);border:1px solid rgba(234,179,8,.28);color:var(--warn);border-radius:8px;padding:8px 10px;margin-top:8px;font-size:12.5px;line-height:1.45}
+.warnbox b{color:inherit}
 .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px}
 .hidden{display:none!important}
 </style>
@@ -203,8 +210,16 @@ button.sm{padding:5px 9px;font-size:12.5px}
 </details>
 
 <!-- STEP 2: Scelta manuale vs Pool -->
-<h2><span class="step-num">2</span> Come vuoi scegliere le 2 o 3 liste da unire?</h2>
+<h2><span class="step-num">2</span> Quali liste unire?</h2>
 <div class="card">
+  <div class="between" style="margin-bottom:10px">
+    <div id="selCount" class="muted"></div>
+    <div class="row">
+      <button class="sec sm" id="btnPickFree" onclick="pickFirstFree()">⚡ Spunta le prime 3 libere</button>
+      <button class="sec sm" onclick="clearSelection()">Deseleziona tutte</button>
+    </div>
+  </div>
+
   <div class="mode-grid">
     <button type="button" class="mode-opt" id="modeManual" onclick="setMode('manual')">
       <input type="radio" name="mode" id="radManual" tabindex="-1">
@@ -233,6 +248,7 @@ button.sm{padding:5px 9px;font-size:12.5px}
   </div>
 
   <div id="manualSummary" class="subcard"></div>
+  <div id="step2Warn"></div>
 </div>
 
 <!-- STEP 3: Link finale Vercel + Verifica -->
@@ -578,7 +594,7 @@ function renderList() {
           <input type="checkbox" class="src-chk" ${checked ? 'checked' : ''} onchange="toggleSrc(${i}, this.checked)" title="Seleziona questa lista per la playlist unita">
           <div style="flex:1;min-width:0">
             <div class="between">
-              <div class="src-title">${esc(s.n)}</div>
+              <div class="src-title" title="${esc(s.n)}">${esc(niceName(s))}</div>
               <div id="badge-${i}">${statusBadgeHtml(st)}</div>
             </div>
             <div class="src-host">${esc(s.u)} · utente: ${esc(s.a)} · <b>${groupsSummary(s)}</b></div>
@@ -610,7 +626,11 @@ function renderList() {
 function toggleSrc(i, checked) {
   D.s[i].e = checked ? 1 : 0;
   const card = $('card-' + i);
-  if (card) card.classList.toggle('picked', checked);
+  if (card) {
+    card.classList.toggle('picked', checked);
+    const box = card.querySelector('.src-chk');
+    if (box) box.checked = checked;
+  }
   saveAndRefresh();
 }
 
@@ -830,6 +850,42 @@ function setMode(m) {
   saveAndRefresh();
 }
 
+// Nome leggibile: se nel Gist il nome manca o è un URL, mostra solo l'host
+function niceName(s) {
+  let n = String(s.n || '').trim();
+  if (!n || /^https?:\/\//i.test(n)) {
+    const raw = /^https?:\/\//i.test(n) ? n : String(s.u || '');
+    try {
+      n = new URL(raw).host;
+    } catch {
+      n = raw.replace(/^https?:\/\//i, '').replace(/\/+$/, '');
+    }
+  }
+  return n.replace(/\/+$/, '') || String(s.u || '').replace(/^https?:\/\//, '');
+}
+
+// Avvisi su liste doppie o troppo numerose (stesso server / stesso account)
+function dupWarnings(sel) {
+  const out = [];
+  const byServer = new Map();
+  for (const { s } of sel) {
+    const srv = String(s.u || '').replace(/\/+$/, '').toLowerCase();
+    if (!byServer.has(srv)) byServer.set(srv, []);
+    byServer.get(srv).push(s);
+  }
+  for (const [srv, arr] of byServer) {
+    if (arr.length < 2) continue;
+    const accts = [...new Set(arr.map((s) => String(s.a || '').toLowerCase()))];
+    const names = arr.map((s) => `<b>${esc(niceName(s))}</b>`).join(' / ');
+    if (accts.length === 1) {
+      out.push(`⚠️ ${names} sembrano lo <b>stesso account</b> (stesso server e stessa utenza): unendole i canali risultano doppi.`);
+    } else {
+      out.push(`⚠️ ${names} usano lo <b>stesso server</b> (${esc(srv.replace(/^https?:\/\//i, ''))}): controlla di non aver importato la stessa lista due volte.`);
+    }
+  }
+  return out;
+}
+
 function renderMode() {
   const isPool = D.mode === 'pool';
   $('modeManual').classList.toggle('active', !isPool);
@@ -840,31 +896,96 @@ function renderMode() {
   $('manualSummary').classList.toggle('hidden', isPool);
   $('poolN').value = D.n || 3;
 
-  const selected = D.s.filter((s) => s.e !== 0);
+  const limit = Math.max(1, +D.n || 3);
+  const sel = D.s.map((s, i) => ({ s, i })).filter((x) => x.s.e !== 0);
+
+  const btnFree = $('btnPickFree');
+  if (btnFree) btnFree.textContent = `⚡ Spunta le prime ${limit} libere`;
+  $('selCount').innerHTML = sel.length
+    ? `<b>${sel.length}</b> ${sel.length === 1 ? 'lista selezionata' : 'liste selezionate'} su ${D.s.length}`
+    : 'Nessuna lista selezionata';
+
   if (!isPool) {
-    $('manualSummary').innerHTML = selected.length
-      ? `<b>Liste che verranno unite (${selected.length}):</b> ` + selected.map((s) => `<span class="badge b-info">${esc(s.n)}</span>`).join(' ')
-      : '<span class="muted">Nessuna lista spuntata sopra. Spunta le 2 o 3 liste che vuoi unire.</span>';
+    $('manualSummary').innerHTML = sel.length
+      ? `<div style="font-weight:600;margin-bottom:6px">Verranno unite queste ${sel.length} liste</div>
+         <div class="pick-list">${sel
+           .map(
+             ({ s, i }) =>
+               `<span class="badge b-info pick" title="${esc(s.n)} (${esc(s.u)})"><span class="pick-name">${esc(niceName(s))}</span><button class="x" onclick="toggleSrc(${i},false)" title="Togli dalla selezione">✕</button></span>`
+           )
+           .join('')}</div>`
+      : '<span class="muted">Spunta le liste al passo 1: 2 o 3 bastano. Poi scegli i gruppi con “Scegli gruppi”.</span>';
   } else {
-    const limit = Math.max(1, +D.n || 3);
     let used = 0;
-    const html = selected.map((s) => {
-      const st = ST[stKey(s)];
-      let note = '⏳ stato da controllare';
-      let cls = '';
-      if (st && !st.loading) {
-        if (st.ok) {
-          if (used < limit) { used++; note = '✓ entrerà nella playlist'; cls = 'b-ok'; }
-          else { note = 'di riserva (libera)'; cls = ''; }
-        } else {
-          note = 'esclusa (' + (st.why || 'non disponibile') + ')';
-          cls = 'b-err';
+    const html = sel
+      .map(({ s }) => {
+        const st = ST[stKey(s)];
+        let note = '⏳ stato da controllare';
+        let cls = '';
+        if (st && !st.loading) {
+          if (st.ok) {
+            if (used < limit) {
+              used++;
+              note = '✓ entrerà nella playlist';
+              cls = 'b-ok';
+            } else {
+              note = 'di riserva (libera)';
+            }
+          } else {
+            note = 'esclusa (' + (st.why || 'non disponibile') + ')';
+            cls = 'b-err';
+          }
         }
-      }
-      return `<div class="row" style="margin:4px 0"><span class="badge ${cls}">${esc(note)}</span> <b>${esc(s.n)}</b></div>`;
-    }).join('');
-    $('poolPreview').innerHTML = selected.length ? html : '<span class="muted">Spunta le liste da far partecipare al pool.</span>';
+        return `<div class="row" style="margin:4px 0"><span class="badge ${cls}">${esc(note)}</span> <b>${esc(niceName(s))}</b></div>`;
+      })
+      .join('');
+    $('poolPreview').innerHTML = sel.length
+      ? html
+      : '<span class="muted">Spunta al passo 1 le liste tra cui far scegliere il pool.</span>';
   }
+
+  const warns = [];
+  if (!isPool && sel.length > limit) {
+    warns.push(
+      `⚠️ Stai unendo <b>${sel.length}</b> liste. Con più di ${limit} la playlist diventa pesante e ogni lista occupa una connessione: meglio 2 o 3.`
+    );
+  }
+  if (sel.length) warns.push(...dupWarnings(sel));
+  $('step2Warn').innerHTML = warns.map((w) => `<div class="warnbox">${w}</div>`).join('');
+}
+
+// Seleziona in automatico le prime N liste libere (utile quando ne hai molte dal Gist)
+async function pickFirstFree() {
+  const limit = Math.max(1, +D.n || 3);
+  const needCheck = D.s.some((s) => {
+    const st = ST[stKey(s)];
+    return !st || st.loading;
+  });
+  if (needCheck) {
+    $('manualSummary').innerHTML = '<span class="muted">⏳ Controllo lo stato delle liste…</span>';
+    await chkAll(false);
+  }
+
+  let n = 0;
+  D.s.forEach((s) => {
+    const st = ST[stKey(s)];
+    const free = st && !st.loading && st.ok;
+    const take = free && n < limit;
+    if (take) n++;
+    s.e = take ? 1 : 0;
+  });
+  saveAndRefresh();
+  renderList();
+
+  if (!n) {
+    alert('Nessuna lista risulta libera in questo momento. Controlla lo stato oppure spunta a mano le liste che vuoi unire.');
+  }
+}
+
+function clearSelection() {
+  D.s.forEach((s) => (s.e = 0));
+  saveAndRefresh();
+  renderList();
 }
 
 // ---- Controllo stato Xtream ----

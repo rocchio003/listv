@@ -18,8 +18,10 @@ export const getLong = (url) => get(url, {}, 35000);
 
 export const cleanBase = (u) => String(u || '').trim().replace(/\/+$/, '');
 
+// type=m3u -> solo canali live (niente film/serie). Se un pannello ignora il parametro,
+// le esclusioni manuali dei gruppi restano comunque attive come rete di sicurezza.
 export const xtM3uUrl = (s) =>
-  `${cleanBase(s.u)}/get.php?username=${encodeURIComponent(s.a)}&password=${encodeURIComponent(s.p)}&type=m3u_plus&output=ts`;
+  `${cleanBase(s.u)}/get.php?username=${encodeURIComponent(s.a)}&password=${encodeURIComponent(s.p)}&type=m3u&output=ts`;
 
 export const xtEpgUrl = (s) =>
   `${cleanBase(s.u)}/xmltv.php?username=${encodeURIComponent(s.a)}&password=${encodeURIComponent(s.p)}`;

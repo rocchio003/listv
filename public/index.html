@@ -725,12 +725,35 @@ function isGroupChecked(s, name) {
   return !(s.x || []).includes(name);
 }
 
-function renderGroupsHtml(i) {
+function groupNames(i) {
+  return Object.keys(GRP_CACHE[i] || {}).sort((a, b) => a.localeCompare(b, 'it'));
+}
+
+// Solo le righe della lista: una spunta non deve ridisegnare tutto il pannello,
+// altrimenti il contenitore con overflow:auto riparte da scrollTop 0.
+function renderGroupItems(i) {
   const s = D.s[i];
   const groups = GRP_CACHE[i] || {};
-  const names = Object.keys(groups).sort((a, b) => a.localeCompare(b, 'it'));
+  const names = groupNames(i);
   const needle = (GRP_SEARCH[i] || '').trim().toLowerCase();
   const filtered = needle ? names.filter((n) => n.toLowerCase().includes(needle)) : names;
+
+  return filtered.map((n) => {
+    const ch = groups[n];
+    const chk = isGroupChecked(s, n) ? 'checked' : '';
+    return `
+      <label class="grp-item">
+        <input type="checkbox" data-g="${esc(n)}" ${chk} onchange="toggleGroupEl(this, ${i})">
+        <span class="grp-name">${esc(n)}</span>
+        ${ch !== null && ch !== undefined ? `<span class="muted">${ch}</span>` : ''}
+      </label>
+    `;
+  }).join('') || '<div class="muted" style="padding:8px">Nessun gruppo corrisponde alla ricerca.</div>';
+}
+
+function renderGroupsHtml(i) {
+  const s = D.s[i];
+  const names = groupNames(i);
   const selectedCount = names.filter((n) => isGroupChecked(s, n)).length;
   const isWhitelist = s.gm === 'in';
 
@@ -741,30 +764,18 @@ function renderGroupsHtml(i) {
           <button class="tab ${isWhitelist ? 'active' : ''}" onclick="setGroupMode(${i}, 'in')">✓ Solo i gruppi spuntati (consigliato)</button>
           <button class="tab ${!isWhitelist ? 'active' : ''}" onclick="setGroupMode(${i}, 'ex')">Tutti tranne deselezionati</button>
         </div>
-        <span class="muted">${selectedCount} / ${names.length} gruppi inclusi</span>
+        <span class="muted" id="gc-${i}">${selectedCount} / ${names.length} gruppi inclusi</span>
       </div>
 
       <div class="row" style="margin-top:8px">
-        <input placeholder="Cerca gruppo (es. ITA, SPORT, SKY)..." value="${esc(GRP_SEARCH[i] || '')}" style="flex:1;min-width:180px" oninput="GRP_SEARCH[${i}]=this.value;refreshGroupsBox(${i})">
+        <input id="gs-${i}" placeholder="Cerca gruppo (es. ITA, SPORT, SKY)..." value="${esc(GRP_SEARCH[i] || '')}" style="flex:1;min-width:180px" oninput="setGroupSearch(${i}, this.value)">
         <button class="sec sm" onclick="bulkGroups(${i}, true, true)">Seleziona filtrati</button>
         <button class="sec sm" onclick="bulkGroups(${i}, false, true)">Deseleziona filtrati</button>
         <button class="sec sm" onclick="bulkGroups(${i}, true, false)">Tutti</button>
         <button class="sec sm" onclick="bulkGroups(${i}, false, false)">Nessuno</button>
       </div>
 
-      <div class="grp-list">
-        ${filtered.map((n) => {
-          const ch = groups[n];
-          const chk = isGroupChecked(s, n) ? 'checked' : '';
-          return `
-            <label class="grp-item">
-              <input type="checkbox" data-g="${esc(n)}" ${chk} onchange="toggleGroupEl(this, ${i})">
-              <span class="grp-name">${esc(n)}</span>
-              ${ch !== null && ch !== undefined ? `<span class="muted">${ch}</span>` : ''}
-            </label>
-          `;
-        }).join('') || '<div class="muted" style="padding:8px">Nessun gruppo corrisponde alla ricerca.</div>'}
-      </div>
+      <div class="grp-list" id="gl-${i}">${renderGroupItems(i)}</div>
 
       <div class="between">
         <button class="sec sm" onclick="copyGroupsToOthers(${i})">📋 Copia questi nomi gruppo sulle altre liste selezionate</button>
@@ -774,11 +785,35 @@ function renderGroupsHtml(i) {
   `;
 }
 
-function refreshGroupsBox(i) {
-  const box = $('grp-' + i);
-  if (box) box.innerHTML = renderGroupsHtml(i);
+// Aggiorna contatore e riepilogo sulla card senza toccare la lista.
+function updateGroupMeta(i) {
+  const names = groupNames(i);
+  const el = $('gc-' + i);
+  if (el) el.textContent = `${names.filter((n) => isGroupChecked(D.s[i], n)).length} / ${names.length} gruppi inclusi`;
   const hostLine = $('card-' + i)?.querySelector('.src-host b');
   if (hostLine) hostLine.textContent = groupsSummary(D.s[i]);
+}
+
+function refreshGroupList(i) {
+  const list = $('gl-' + i);
+  if (!list) return;
+  const top = list.scrollTop;
+  list.innerHTML = renderGroupItems(i);
+  list.scrollTop = top;
+  updateGroupMeta(i);
+}
+
+function setGroupSearch(i, value) {
+  GRP_SEARCH[i] = value;
+  refreshGroupList(i);
+}
+
+// Ridisegna solo le righe (non l'intero pannello): scroll e filtro restano.
+function refreshGroupsBox(i) {
+  if ($('gl-' + i)) return refreshGroupList(i);
+  const box = $('grp-' + i);
+  if (box) box.innerHTML = renderGroupsHtml(i);
+  updateGroupMeta(i);
 }
 
 function setGroupMode(i, mode) {
@@ -814,7 +849,9 @@ function toggleGroup(i, name, checked) {
     if (!checked) s.x.push(name);
   }
   saveAndRefresh();
-  refreshGroupsBox(i);
+  // La casella è già aggiornata nel DOM: si tocca solo il contatore, così la
+  // lista non si ridisegna e lo scroll non torna da capo.
+  updateGroupMeta(i);
 }
 
 function bulkGroups(i, check, onlyFiltered) {

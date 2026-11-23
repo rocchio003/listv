@@ -66,33 +66,94 @@ export function parseGroupsOnly(txt) {
   return counts;
 }
 
-export async function collect(s) {
-  const r = await get(xtM3uUrl(s));
-  if (!r.ok) throw new Error('HTTP ' + r.status);
-  const txt = await r.text();
-  if (!txt.includes('#EXTINF')) {
-    throw new Error('Risposta non valida (non contiene canali #EXTINF)');
+// Alcuni pannelli rispondono a get.php con codici non HTTP standard (es. "HTTP 885")
+// o con pagine di blocco quando la chiamata arriva da un datacenter come Vercel,
+// oppure quando lo User-Agent non è quello di un player. Da qui i tentativi:
+// prima con User-Agent da player, poi (se get.php resta bloccata) l'API Xtream.
+const UAS = ['VLC/3.0.20', 'IPTVSmartersPro/1.1', 'okhttp/4.9.0'];
+
+async function getM3uText(s, firstMs = 20000, nextMs = 7000) {
+  const notes = [];
+  for (let i = 0; i < UAS.length; i++) {
+    try {
+      const r = await get(xtM3uUrl(s), { 'User-Agent': UAS[i] }, i === 0 ? firstMs : nextMs);
+      if (!r.ok) {
+        notes.push('HTTP ' + r.status);
+        continue;
+      }
+      const txt = await r.text();
+      if (!txt.includes('#EXTINF')) {
+        notes.push('risposta senza canali #EXTINF');
+        continue;
+      }
+      return { txt, notes };
+    } catch (e) {
+      notes.push(e && e.name === 'TimeoutError' ? 'timeout' : 'errore di rete');
+    }
   }
-  return parseM3U(txt);
+  return { txt: null, notes: [...new Set(notes)] };
+}
+
+// Fallback completo: ricostruisce i canali live dall'API Xtream quando get.php
+// è bloccata. Stessi nomi gruppo delle categorie usate dal selettore del pannello.
+async function collectViaApi(s) {
+  const [rc, rs] = await Promise.all([
+    get(xtApiUrl(s, 'get_live_categories'), {}, 15000),
+    get(xtApiUrl(s, 'get_live_streams'), {}, 20000),
+  ]);
+  if (!rc.ok || !rs.ok) throw new Error(`API HTTP ${rc.ok ? rs.status : rc.status}`);
+  const cats = await rc.json().catch(() => null);
+  const streams = await rs.json().catch(() => null);
+  if (!Array.isArray(streams) || !streams.length) throw new Error('API senza canali');
+
+  const cname = new Map();
+  if (Array.isArray(cats)) {
+    for (const c of cats) {
+      if (c && c.category_id !== undefined) cname.set(String(c.category_id), String(c.category_name || ''));
+    }
+  }
+
+  const base = cleanBase(s.u);
+  return streams.map((st) => {
+    const name = String(st.name || st.title || 'Canale').replace(/"/g, "'");
+    const group = cname.get(String(st.category_id)) || 'Senza gruppo';
+    const logo = st.stream_icon ? String(st.stream_icon).replace(/"/g, "'") : '';
+    const inf =
+      `#EXTINF:-1 tvg-id="${st.epg_channel_id || ''}" tvg-name="${name}"` +
+      (logo ? ` tvg-logo="${logo}"` : '') +
+      ` group-title="${group.replace(/"/g, "'")}",${name}`;
+    return {
+      inf,
+      extra: '',
+      group,
+      url: `${base}/live/${encodeURIComponent(s.a)}/${encodeURIComponent(s.p)}/${st.stream_id}.ts`,
+    };
+  });
+}
+
+export async function collect(s) {
+  const { txt, notes } = await getM3uText(s);
+  if (txt) return parseM3U(txt);
+  try {
+    return await collectViaApi(s);
+  } catch (e) {
+    const why = [e.message || String(e), ...notes].join(' · ');
+    throw new Error(`bloccata dal provider: ${why}`);
+  }
 }
 
 // Recupera i gruppi di una lista Xtream: prova da get.php (con conteggi reali),
 // con fallback sulle API categorie se get.php fallisce, è vuoto o non espone i gruppi.
 export async function fetchXtreamGroups(s) {
-  try {
-    const r = await get(xtM3uUrl(s), {}, 18000);
-    if (r.ok) {
-      const txt = await r.text();
-      if (txt.includes('#EXTINF')) {
-        const g = parseGroupsOnly(txt);
-        const names = Object.keys(g);
-        // Se il provider non manda group-title, tutto finisce in "Senza gruppo":
-        // meglio le categorie live dell'API che un unico gruppo inutilizzabile.
-        const flat = names.length === 1 && names[0] === 'Senza gruppo';
-        if (names.length && !flat) return { groups: g, source: 'm3u' };
-      }
-    }
-  } catch {}
+  const { txt } = await getM3uText(s, 18000, 7000);
+  if (txt) {
+    const g = parseGroupsOnly(txt);
+    const names = Object.keys(g);
+    // Se il provider non manda group-title, tutto finisce in "Senza gruppo":
+    // meglio le categorie live dell'API che un unico gruppo inutilizzabile.
+    const flat = names.length === 1 && names[0] === 'Senza gruppo';
+    if (names.length && !flat) return { groups: g, source: 'm3u' };
+  }
 
   const r = await get(xtApiUrl(s, 'get_live_categories'), {}, 10000);
   if (!r.ok) throw new Error('HTTP ' + r.status);
